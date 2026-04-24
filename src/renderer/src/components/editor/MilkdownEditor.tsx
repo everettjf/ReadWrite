@@ -95,6 +95,31 @@ export function MilkdownEditor({ children }: { children?: React.ReactNode }): JS
           view.dispatch(tr);
         });
       },
+      getSelectionText: () => {
+        const editor = editorRef.current;
+        if (!editor) return '';
+        let text = '';
+        editor.action((ctx) => {
+          const view = ctx.get(editorViewCtx);
+          const { from, to } = view.state.selection;
+          if (from === to) return;
+          text = view.state.doc.textBetween(from, to, '\n', '\n');
+        });
+        return text;
+      },
+      replaceSelection: (md: string) => {
+        const editor = editorRef.current;
+        if (!editor) return;
+        editor.action((ctx) => {
+          const view = ctx.get(editorViewCtx);
+          const parser = ctx.get(parserCtx);
+          const doc = parser(md);
+          if (!doc) return;
+          const { from, to } = view.state.selection;
+          const tr = view.state.tr.replaceWith(from, to, doc.content);
+          view.dispatch(tr);
+        });
+      },
       getEditor: () => editorRef.current,
     }),
     [],
@@ -102,8 +127,10 @@ export function MilkdownEditor({ children }: { children?: React.ReactNode }): JS
 
   return (
     <MilkdownBridgeContext.Provider value={bridge}>
-      <div className="milkdown h-full w-full overflow-auto" ref={hostRef} />
-      {children}
+      <div className="flex h-full w-full flex-col">
+        {children}
+        <div className="milkdown flex-1 overflow-auto" ref={hostRef} />
+      </div>
     </MilkdownBridgeContext.Provider>
   );
 }

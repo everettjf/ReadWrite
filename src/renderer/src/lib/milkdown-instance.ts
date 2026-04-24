@@ -5,6 +5,8 @@ export interface MilkdownBridge {
   getMarkdown: () => string;
   setMarkdown: (md: string) => void;
   insertMarkdown: (md: string) => void;
+  getSelectionText: () => string;
+  replaceSelection: (md: string) => void;
   getEditor: () => Editor | null;
 }
 

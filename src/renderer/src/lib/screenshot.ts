@@ -1,8 +1,19 @@
 import { toPng } from 'html-to-image';
 import { useEditorStore } from '@/stores/editor';
 
-function insertMarkdownImage(dataUrl: string, savedPath?: string): void {
-  const src = savedPath ? `file://${encodeURI(savedPath)}` : dataUrl;
+function insertMarkdownImage(args: {
+  dataUrl: string;
+  savedPath?: string;
+  relativePath?: string;
+}): void {
+  let src: string;
+  if (args.relativePath) {
+    src = args.relativePath;
+  } else if (args.savedPath) {
+    src = `file://${encodeURI(args.savedPath)}`;
+  } else {
+    src = args.dataUrl;
+  }
   const snippet = `\n![screenshot](${src})\n`;
   const cur = useEditorStore.getState().content;
   useEditorStore.getState().setContent(cur + snippet, { markDirty: true });
@@ -14,9 +25,18 @@ function insertMarkdownImage(dataUrl: string, savedPath?: string): void {
  * the renderer's DOM tree.
  */
 export async function captureAndInsertScreenshot(tabId: string): Promise<void> {
-  const result = await window.api.screenshot.captureTab({ tabId, format: 'png' });
+  const markdownPath = useEditorStore.getState().path;
+  const result = await window.api.screenshot.captureTab({
+    tabId,
+    format: 'png',
+    markdownPath,
+  });
   if (!result) return;
-  insertMarkdownImage(result.dataUrl, result.savedPath);
+  insertMarkdownImage({
+    dataUrl: result.dataUrl,
+    savedPath: result.savedPath,
+    relativePath: result.relativePath,
+  });
 }
 
 /**
@@ -25,5 +45,5 @@ export async function captureAndInsertScreenshot(tabId: string): Promise<void> {
  */
 export async function captureElementAndInsert(el: HTMLElement): Promise<void> {
   const dataUrl = await toPng(el, { cacheBust: true, pixelRatio: 2 });
-  insertMarkdownImage(dataUrl);
+  insertMarkdownImage({ dataUrl });
 }

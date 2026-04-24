@@ -71,11 +71,22 @@
 }
 
 /* Milkdown content baseline styling (since we don't use nord) */
+:root {
+  --rw-editor-font-size: 16px;
+  --rw-editor-max-width: 760px;
+  --rw-editor-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
 .milkdown {
   @apply h-full;
+  font-size: var(--rw-editor-font-size);
+  font-family: var(--rw-editor-font-family);
 }
 .milkdown .editor {
-  @apply mx-auto max-w-3xl px-6 py-8 leading-relaxed outline-none;
+  @apply mx-auto px-6 py-8 leading-relaxed outline-none;
+  max-width: var(--rw-editor-max-width);
+}
+.cm-editor {
+  font-size: var(--rw-editor-font-size) !important;
 }
 .milkdown .editor h1 {
   @apply mb-4 mt-6 text-3xl font-bold;
