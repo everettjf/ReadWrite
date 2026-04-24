@@ -24,3 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Replaced the generated placeholder icon with a skeuomorphic book + fountain pen design. Shipped as `build/icon.png` (1024×1024) and `build/icon.icns` (native macOS iconset with all sizes embedded). Windows `.ico` is derived automatically by electron-builder at packaging time.
+
+### Fixed
+
+- Renamed the `rebuild` npm script to `rebuild:native` so it isn't shadowed by pnpm's built-in `pnpm rebuild` command, which uses system Node and silently caused `NODE_MODULE_VERSION` mismatches when launching Electron.
+- Added a `postinstall` script that runs `electron-builder install-app-deps` automatically after `pnpm install`, so native modules (e.g. `better-sqlite3`) are compiled against Electron's Node ABI from the very first install.

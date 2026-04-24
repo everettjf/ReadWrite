@@ -53,11 +53,20 @@ Platforms: macOS, Windows, Linux.
 ### Develop
 
 ```bash
-pnpm install          # installs dependencies and approves native builds
+pnpm install          # installs deps + auto-runs electron-builder install-app-deps
+                      # (rebuilds better-sqlite3 against Electron's Node ABI)
 pnpm dev              # electron-vite dev: main + preload + renderer with HMR
 ```
 
-The app will hot-reload the renderer on every save, and rebuild the main/preload on changes.
+The app hot-reloads the renderer on every save, and rebuilds the main / preload on changes.
+
+If you ever see `NODE_MODULE_VERSION` mismatches at startup (system Node and Electron's Node ABI drifted apart), force a rebuild:
+
+```bash
+pnpm run rebuild:native
+```
+
+Don't run `pnpm rebuild` — that's pnpm's built-in command which uses system Node and won't fix the issue. Always use `pnpm run rebuild:native` (with explicit `run`).
 
 ### Build (production bundle only)
 

@@ -38,13 +38,14 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "clean": "rimraf out dist node_modules/.vite .turbo .eslintcache",
-    "rebuild": "electron-builder install-app-deps",
+    "rebuild:native": "electron-builder install-app-deps",
     "package:dir": "pnpm run build && electron-builder --dir",
     "dist": "pnpm run build && electron-builder",
     "dist:mac": "pnpm run build && electron-builder --mac",
     "dist:win": "pnpm run build && electron-builder --win",
     "dist:linux": "pnpm run build && electron-builder --linux",
-    "prepare": "husky || true"
+    "prepare": "husky || true",
+    "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.18.3",
