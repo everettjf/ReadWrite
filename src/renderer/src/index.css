@@ -1,0 +1,141 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5.9% 10%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+  }
+
+  * {
+    @apply border-border;
+  }
+  html,
+  body,
+  #root {
+    @apply h-full w-full overflow-hidden antialiased;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
+  }
+}
+
+/* WebContentsView hosting area: the renderer div that represents where
+ * the native view lives must be transparent so the native view shows through. */
+.webview-host {
+  background: transparent;
+}
+
+/* Milkdown content baseline styling (since we don't use nord) */
+.milkdown {
+  @apply h-full;
+}
+.milkdown .editor {
+  @apply mx-auto max-w-3xl px-6 py-8 leading-relaxed outline-none;
+}
+.milkdown .editor h1 {
+  @apply mb-4 mt-6 text-3xl font-bold;
+}
+.milkdown .editor h2 {
+  @apply mb-3 mt-5 text-2xl font-semibold;
+}
+.milkdown .editor h3 {
+  @apply mb-2 mt-4 text-xl font-semibold;
+}
+.milkdown .editor p {
+  @apply my-3;
+}
+.milkdown .editor ul {
+  @apply my-3 list-disc pl-6;
+}
+.milkdown .editor ol {
+  @apply my-3 list-decimal pl-6;
+}
+.milkdown .editor blockquote {
+  @apply my-3 border-l-4 border-muted-foreground/30 pl-4 italic text-muted-foreground;
+}
+.milkdown .editor code {
+  @apply rounded bg-muted px-1.5 py-0.5 font-mono text-sm;
+}
+.milkdown .editor pre {
+  @apply my-3 overflow-x-auto rounded bg-muted p-3 font-mono text-sm;
+}
+.milkdown .editor pre code {
+  @apply bg-transparent p-0;
+}
+.milkdown .editor a {
+  @apply text-primary underline underline-offset-2;
+}
+.milkdown .editor img {
+  @apply my-3 max-w-full rounded;
+}
+.milkdown .editor hr {
+  @apply my-6 border-border;
+}
+.milkdown .editor table {
+  @apply my-3 w-full border-collapse;
+}
+.milkdown .editor th,
+.milkdown .editor td {
+  @apply border border-border px-3 py-2 text-left;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted));
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.4);
+}
