@@ -8,6 +8,8 @@ import type {
   ScreenshotResult,
   AppSettings,
   FileTreeEntry,
+  AICompletionRequest,
+  AICompletionResult,
 } from '@shared/types';
 
 const api = {
@@ -78,6 +80,11 @@ const api = {
     get: (): Promise<AppSettings> => ipcRenderer.invoke(IPC.SETTINGS_GET),
     set: (patch: Partial<AppSettings>): Promise<AppSettings> =>
       ipcRenderer.invoke(IPC.SETTINGS_SET, patch),
+    onChanged: (listener: (next: AppSettings) => void): (() => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, next: AppSettings) => listener(next);
+      ipcRenderer.on(IPC.SETTINGS_CHANGED, handler);
+      return () => ipcRenderer.off(IPC.SETTINGS_CHANGED, handler);
+    },
   },
 
   session: {
@@ -87,6 +94,21 @@ const api = {
 
   shell: {
     openExternal: (url: string): Promise<void> => ipcRenderer.invoke(IPC.SHELL_OPEN_EXTERNAL, url),
+  },
+
+  app: {
+    openSettings: (): Promise<void> => ipcRenderer.invoke(IPC.APP_OPEN_SETTINGS),
+    getVersion: (): Promise<string> => ipcRenderer.invoke(IPC.APP_GET_VERSION),
+  },
+
+  ai: {
+    complete: (req: AICompletionRequest): Promise<AICompletionResult> =>
+      ipcRenderer.invoke(IPC.AI_COMPLETE, req),
+  },
+
+  wechat: {
+    testCredentials: (): Promise<{ ok: boolean; message: string }> =>
+      ipcRenderer.invoke(IPC.WECHAT_TEST_CREDENTIALS),
   },
 } as const;
 

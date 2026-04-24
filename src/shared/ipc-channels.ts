@@ -29,6 +29,7 @@ export const IPC = {
   // Settings / state
   SETTINGS_GET: 'settings:get',
   SETTINGS_SET: 'settings:set',
+  SETTINGS_CHANGED: 'settings:changed',
 
   // Session-level persistence
   SESSION_LOAD: 'session:load',
@@ -36,6 +37,17 @@ export const IPC = {
 
   // Menu / shell helpers
   SHELL_OPEN_EXTERNAL: 'shell:open-external',
+
+  // App-level
+  APP_OPEN_SETTINGS: 'app:open-settings',
+  APP_GET_VERSION: 'app:get-version',
+
+  // AI
+  AI_COMPLETE: 'ai:complete',
+
+  // WeChat (scaffold)
+  WECHAT_TEST_CREDENTIALS: 'wechat:test-credentials',
+  WECHAT_PUBLISH: 'wechat:publish',
 } as const;
 
 export type IPCChannel = (typeof IPC)[keyof typeof IPC];

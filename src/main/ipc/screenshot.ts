@@ -1,10 +1,42 @@
 import { ipcMain, app } from 'electron';
 import { IPC } from '@shared/ipc-channels';
 import type { IpcContext } from './index';
-import type { ScreenshotOptions, ScreenshotResult } from '@shared/types';
+import type { ScreenshotOptions, ScreenshotResult, AppSettings } from '@shared/types';
 import { writeFile, mkdir } from 'node:fs/promises';
-import { join } from 'node:path';
-import { kvGet } from '../db';
+import { join, dirname, relative, isAbsolute, sep } from 'node:path';
+import { getCurrentSettings } from './settings';
+
+interface ResolvedDir {
+  /** Absolute directory where the image will be saved. */
+  absDir: string;
+  /** Directory used for computing the relative href in markdown, if applicable. */
+  baseForRelative: string | null;
+}
+
+function resolveImagesDir(settings: AppSettings, markdownPath: string | null): ResolvedDir {
+  const subfolder = (settings.imagesDirSubfolderName || 'images').replace(/[\\/]+$/, '');
+
+  if (settings.imagesDirMode === 'next-to-doc' && markdownPath) {
+    const docDir = dirname(markdownPath);
+    return { absDir: join(docDir, subfolder), baseForRelative: docDir };
+  }
+
+  if (settings.imagesDirMode === 'custom' && settings.imagesDirCustom) {
+    const custom = settings.imagesDirCustom;
+    const absDir = isAbsolute(custom) ? custom : join(app.getPath('home'), custom);
+    return { absDir, baseForRelative: markdownPath ? dirname(markdownPath) : null };
+  }
+
+  // pictures (default fallback)
+  return {
+    absDir: join(app.getPath('pictures'), 'ReadWrite'),
+    baseForRelative: markdownPath ? dirname(markdownPath) : null,
+  };
+}
+
+function toPosixPath(p: string): string {
+  return p.split(sep).join('/');
+}
 
 export function registerScreenshotIpc(ctx: IpcContext): void {
   ipcMain.handle(
@@ -14,19 +46,26 @@ export function registerScreenshotIpc(ctx: IpcContext): void {
       const base = await tabs.screenshot(opts.tabId);
       if (!base) return null;
 
-      const customPath = kvGet<string>('screenshotSavePath');
-      const dir =
-        customPath && customPath.length > 0
-          ? customPath
-          : join(app.getPath('pictures'), 'ReadWrite');
+      const settings = getCurrentSettings();
+      const { absDir, baseForRelative } = resolveImagesDir(settings, opts.markdownPath ?? null);
 
       try {
-        await mkdir(dir, { recursive: true });
-        const filename = `readwrite-${Date.now()}.png`;
-        const savedPath = join(dir, filename);
+        await mkdir(absDir, { recursive: true });
+        const filename = `screenshot-${Date.now()}.png`;
+        const savedPath = join(absDir, filename);
         const buf = Buffer.from(base.dataUrl.split(',')[1]!, 'base64');
         await writeFile(savedPath, buf);
-        return { ...base, savedPath };
+
+        let relativePath: string | undefined;
+        if (baseForRelative) {
+          const rel = relative(baseForRelative, savedPath);
+          // Only treat as a portable relative href if it doesn't escape the doc dir
+          if (!rel.startsWith('..') && !isAbsolute(rel)) {
+            relativePath = toPosixPath(rel);
+          }
+        }
+
+        return { ...base, savedPath, relativePath };
       } catch (err) {
         console.error('[screenshot] save failed:', err);
         return base;

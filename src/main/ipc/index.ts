@@ -5,6 +5,8 @@ import { registerReaderIpc } from './reader';
 import { registerFsIpc } from './fs';
 import { registerScreenshotIpc } from './screenshot';
 import { registerSettingsIpc } from './settings';
+import { registerAiIpc } from './ai';
+import { registerWechatIpc } from './wechat';
 
 export interface IpcContext {
   getMainWindow: () => BrowserWindow | null;
@@ -17,4 +19,6 @@ export function registerAllIpcHandlers(ctx: IpcContext): void {
   registerFsIpc(ctx);
   registerScreenshotIpc(ctx);
   registerSettingsIpc(ctx);
+  registerAiIpc(ctx);
+  registerWechatIpc(ctx);
 }

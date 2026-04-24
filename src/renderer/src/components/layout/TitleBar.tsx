@@ -1,21 +1,12 @@
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { FileText, FolderOpen, Moon, Settings, Sun, Monitor, Save, FilePlus } from 'lucide-react';
+import { FileText, FolderOpen, Settings, Save, FilePlus } from 'lucide-react';
 import { useEditorStore } from '@/stores/editor';
-import { useSettingsStore } from '@/stores/settings';
 import { useTabsStore } from '@/stores/tabs';
 import { openMarkdownFromDialog, saveMarkdownToPath } from '@/lib/doc-io';
 
 export function TitleBar(): JSX.Element {
   const editor = useEditorStore();
-  const settings = useSettingsStore();
 
   const onNew = (): void => {
     if (editor.dirty && !confirm('Discard unsaved changes?')) return;
@@ -31,8 +22,11 @@ export function TitleBar(): JSX.Element {
   };
 
   const onSave = async (): Promise<void> => {
-    await saveMarkdownToPath(editor.content, editor.path);
-    editor.setDirty(false);
+    const saved = await saveMarkdownToPath(editor.content, editor.path);
+    if (saved) {
+      editor.setPath(saved);
+      editor.setDirty(false);
+    }
   };
 
   const onOpenFolder = async (): Promise<void> => {
@@ -45,6 +39,10 @@ export function TitleBar(): JSX.Element {
       rootPath,
     });
     addTab(tab);
+  };
+
+  const onOpenSettings = (): void => {
+    window.api.app.openSettings().catch((e) => console.error('[settings] open failed:', e));
   };
 
   return (
@@ -105,29 +103,14 @@ export function TitleBar(): JSX.Element {
             <TooltipContent>Open code folder</TooltipContent>
           </Tooltip>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" onClick={onOpenSettings}>
                 <Settings className="h-4 w-4" />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => settings.update({ theme: 'light' })}>
-                <Sun className="mr-2 h-4 w-4" />
-                Light
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => settings.update({ theme: 'dark' })}>
-                <Moon className="mr-2 h-4 w-4" />
-                Dark
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => settings.update({ theme: 'system' })}>
-                <Monitor className="mr-2 h-4 w-4" />
-                System
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem disabled>Version 0.1.0</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </TooltipTrigger>
+            <TooltipContent>Settings</TooltipContent>
+          </Tooltip>
         </div>
       </div>
     </TooltipProvider>
