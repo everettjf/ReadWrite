@@ -29,3 +29,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Renamed the `rebuild` npm script to `rebuild:native` so it isn't shadowed by pnpm's built-in `pnpm rebuild` command, which uses system Node and silently caused `NODE_MODULE_VERSION` mismatches when launching Electron.
 - Added a `postinstall` script that runs `electron-builder install-app-deps` automatically after `pnpm install`, so native modules (e.g. `better-sqlite3`) are compiled against Electron's Node ABI from the very first install.
+
+### Added — Settings & AI
+
+- **Standalone Settings window** (separate `BrowserWindow` loading the renderer at `#/settings`) with a sidebar and dedicated panels for General, Editor, Images, AI, WeChat, and About. Replaces the inline theme dropdown that used to live behind the title-bar cog.
+- **Editor preferences**: font family (sans / serif / mono), font size (10–32px), content max-width, and default mode (WYSIWYG / Source). All values feed CSS custom properties that both Milkdown and CodeMirror inherit live.
+- **Images / Screenshots**: configurable storage location with three modes — *next to current document* (default; writes to `images/` beside the .md and inserts a portable relative href like `images/screenshot-….png`), *custom absolute folder*, or *user Pictures folder*. Subfolder name is configurable.
+- **AI configuration**: OpenAI-compatible endpoint, API key (with show/hide), model, system prompt, plus a one-click connection test that issues a real chat-completions request.
+- **AI Polish action**: when AI is enabled, a sparkles button appears in the editor toolbar. With a selection, it polishes the selection in-place; with no selection, it polishes the whole document. Routes through the main process so the API key never leaves the user's machine via the renderer.
+- **WeChat 公众号 credentials**: AppID + AppSecret form with a credential-verification test that hits the real WeChat `cgi-bin/token` endpoint. Publish action is scaffolded with a "coming soon" state.
+- **Cross-window settings sync**: changing a setting in the Settings window broadcasts via IPC and the main window's UI updates live (theme switch, editor font size, etc.).
