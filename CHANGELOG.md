@@ -20,3 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - electron-builder configuration for macOS (dmg), Windows (nsis), Linux (AppImage, deb).
 - GitHub Actions CI for lint, typecheck, test, and cross-platform build.
 - ADR-001 documenting the Electron-over-Tauri decision.
+
+### Changed
+
+- Replaced the generated placeholder icon with a skeuomorphic book + fountain pen design. Shipped as `build/icon.png` (1024×1024) and `build/icon.icns` (native macOS iconset with all sizes embedded). Windows `.ico` is derived automatically by electron-builder at packaging time.

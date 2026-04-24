@@ -4,7 +4,9 @@
 
 A cross-platform desktop app that puts a **reader** and a **Markdown editor** side-by-side, so the gap between consuming and producing knowledge collapses to one window.
 
-![ReadWrite — split reader / editor](build/icon.png)
+<p align="center">
+  <img src="build/icon.png" alt="ReadWrite" width="180" height="180" />
+</p>
 
 - **Left pane:** multi-tab reader for the web, GitHub, PDFs, EPUBs, and local code folders.
 - **Right pane:** a Milkdown-powered WYSIWYG Markdown editor with a first-class source mode (CodeMirror 6).
