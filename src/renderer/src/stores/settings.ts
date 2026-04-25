@@ -23,6 +23,7 @@ const DEFAULTS: AppSettings = {
   aiModel: 'gpt-4o-mini',
   aiSystemPrompt: '',
   wechatExportTheme: 'default',
+  autosaveDebounceMs: 1500,
 };
 
 export const useSettingsStore = create<SettingsState>((set) => ({

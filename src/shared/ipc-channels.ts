@@ -44,6 +44,14 @@ export const IPC = {
   APP_OPEN_SETTINGS: 'app:open-settings',
   APP_GET_VERSION: 'app:get-version',
 
+  // Workspace / document folders
+  WORKSPACE_GET_DEFAULT_ROOT: 'workspace:get-default-root',
+  WORKSPACE_ENSURE_ROOT: 'workspace:ensure-root',
+  DOC_CREATE_NEW: 'doc:create-new',
+  DOC_RENAME: 'doc:rename',
+  DOC_REVEAL_IN_FINDER: 'doc:reveal-in-finder',
+  FS_PATH_EXISTS: 'fs:path-exists',
+
   // AI
   AI_COMPLETE: 'ai:complete',
 

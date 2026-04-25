@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PdfTab } from '@shared/types';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Camera, ZoomIn, ZoomOut } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
 import { useTabsStore } from '@/stores/tabs';
-import { captureElementAndInsert } from '@/lib/screenshot';
 
 // pdfjs worker — set up globally
 import * as pdfjsLib from 'pdfjs-dist';
@@ -62,10 +61,6 @@ export function PdfReader({ tab }: PdfReaderProps): JSX.Element {
     };
   }, [doc, pageNum, scale, tab.id, updateTab]);
 
-  const onCapture = async (): Promise<void> => {
-    if (stageRef.current) await captureElementAndInsert(stageRef.current);
-  };
-
   return (
     <div className="flex h-full w-full flex-col">
       <div className="flex h-10 shrink-0 items-center gap-1 border-b border-border bg-background px-2">
@@ -99,9 +94,6 @@ export function PdfReader({ tab }: PdfReaderProps): JSX.Element {
           <ZoomIn className="h-4 w-4" />
         </Button>
         <div className="flex-1" />
-        <Button variant="ghost" size="icon" onClick={onCapture}>
-          <Camera className="h-4 w-4" />
-        </Button>
       </div>
       <div ref={stageRef} className="flex-1 overflow-auto bg-muted/30 p-4">
         <div className="mx-auto w-max shadow-md">

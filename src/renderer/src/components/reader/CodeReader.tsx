@@ -1,11 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { CodeTab, FileTreeEntry } from '@shared/types';
 import Editor from '@monaco-editor/react';
-import { Button } from '@/components/ui/button';
-import { Camera, ChevronRight, ChevronDown, File, Folder } from 'lucide-react';
+import { ChevronRight, ChevronDown, File, Folder } from 'lucide-react';
 import { cn, extname } from '@/lib/utils';
 import { useTabsStore } from '@/stores/tabs';
-import { captureElementAndInsert } from '@/lib/screenshot';
 
 const LANG_MAP: Record<string, string> = {
   '.ts': 'typescript',
@@ -44,7 +42,6 @@ export function CodeReader({ tab }: CodeReaderProps): JSX.Element {
   const [tree, setTree] = useState<FileTreeEntry[]>([]);
   const [activeFile, setActiveFile] = useState<string | null>(tab.activeFile ?? null);
   const [content, setContent] = useState('');
-  const stageRef = useRef<HTMLDivElement>(null);
   const updateTab = useTabsStore((s) => s.updateTab);
 
   useEffect(() => {
@@ -76,10 +73,6 @@ export function CodeReader({ tab }: CodeReaderProps): JSX.Element {
     updateTab(tab.id, { activeFile } as Partial<CodeTab>);
   }, [activeFile, tab.id, updateTab]);
 
-  const onCapture = async (): Promise<void> => {
-    if (stageRef.current) await captureElementAndInsert(stageRef.current);
-  };
-
   const language = activeFile ? (LANG_MAP[extname(activeFile)] ?? 'plaintext') : 'plaintext';
 
   return (
@@ -87,15 +80,12 @@ export function CodeReader({ tab }: CodeReaderProps): JSX.Element {
       <div className="flex h-10 shrink-0 items-center gap-1 border-b border-border bg-background px-2">
         <span className="truncate text-xs text-muted-foreground">{tab.rootPath}</span>
         <div className="flex-1" />
-        <Button variant="ghost" size="icon" onClick={onCapture} disabled={!activeFile}>
-          <Camera className="h-4 w-4" />
-        </Button>
       </div>
       <div className="flex flex-1 overflow-hidden">
         <div className="w-64 shrink-0 overflow-y-auto border-r border-border bg-muted/20 p-1">
           <FileTree entries={tree} onOpen={setActiveFile} activeFile={activeFile} />
         </div>
-        <div ref={stageRef} className="flex-1">
+        <div className="flex-1">
           {activeFile ? (
             <Editor
               height="100%"

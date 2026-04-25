@@ -1,37 +1,33 @@
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Crop, FileText, FolderOpen, Settings, Save, FilePlus } from 'lucide-react';
+import {
+  Crop,
+  FileText,
+  FolderOpen,
+  Settings,
+  FilePlus,
+  Pencil,
+  Folder as FolderIcon,
+} from 'lucide-react';
 import { useEditorStore } from '@/stores/editor';
 import { useTabsStore } from '@/stores/tabs';
-import { openMarkdownFromDialog, saveMarkdownToPath } from '@/lib/doc-io';
+import { docBasename } from '@/lib/doc-io';
 
 interface TitleBarProps {
   onStartSnip?: () => void;
+  onNewDoc?: () => void;
+  onOpenDoc?: () => void;
+  onRenameDoc?: () => void;
 }
 
-export function TitleBar({ onStartSnip }: TitleBarProps): JSX.Element {
-  const editor = useEditorStore();
-
-  const onNew = (): void => {
-    if (editor.dirty && !confirm('Discard unsaved changes?')) return;
-    editor.reset('# Untitled\n\n');
-    editor.setPath(null);
-  };
-
-  const onOpen = async (): Promise<void> => {
-    const doc = await openMarkdownFromDialog();
-    if (!doc) return;
-    editor.reset(doc.content);
-    editor.setPath(doc.path ?? null);
-  };
-
-  const onSave = async (): Promise<void> => {
-    const saved = await saveMarkdownToPath(editor.content, editor.path);
-    if (saved) {
-      editor.setPath(saved);
-      editor.setDirty(false);
-    }
-  };
+export function TitleBar({
+  onStartSnip,
+  onNewDoc,
+  onOpenDoc,
+  onRenameDoc,
+}: TitleBarProps): JSX.Element {
+  const path = useEditorStore((s) => s.path);
+  const dirty = useEditorStore((s) => s.dirty);
 
   const onOpenFolder = async (): Promise<void> => {
     const folder = await window.api.fs.openDialog({ directory: true, title: 'Open code folder' });
@@ -49,6 +45,11 @@ export function TitleBar({ onStartSnip }: TitleBarProps): JSX.Element {
     window.api.app.openSettings().catch((e) => console.error('[settings] open failed:', e));
   };
 
+  const onReveal = (): void => {
+    if (!path) return;
+    window.api.workspace.revealInFinder(path).catch(() => null);
+  };
+
   return (
     <TooltipProvider delayDuration={300}>
       <div
@@ -59,11 +60,17 @@ export function TitleBar({ onStartSnip }: TitleBarProps): JSX.Element {
           <span className="text-xs font-semibold tracking-tight text-muted-foreground">
             ReadWrite
           </span>
-          {editor.path && (
-            <span className="ml-3 truncate text-xs text-muted-foreground">
-              {editor.path}
-              {editor.dirty && ' •'}
-            </span>
+          {path && (
+            <button
+              className="ml-3 flex max-w-[42rem] items-center gap-1 truncate text-xs text-muted-foreground transition-colors hover:text-foreground"
+              onClick={onReveal}
+              title="Reveal in Finder"
+              style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+            >
+              <FolderIcon className="h-3 w-3 shrink-0 opacity-60" />
+              <span className="truncate">{docBasename(path)}</span>
+              <span className="shrink-0">{dirty ? '·' : '✓'}</span>
+            </button>
           )}
         </div>
 
@@ -71,32 +78,38 @@ export function TitleBar({ onStartSnip }: TitleBarProps): JSX.Element {
           className="flex items-center gap-0.5"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={onNew}>
-                <FilePlus className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>New document</TooltipContent>
-          </Tooltip>
+          {onNewDoc && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={onNewDoc}>
+                  <FilePlus className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>New document (creates a new folder)</TooltipContent>
+            </Tooltip>
+          )}
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={onOpen}>
-                <FileText className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Open Markdown</TooltipContent>
-          </Tooltip>
+          {onOpenDoc && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={onOpenDoc}>
+                  <FileText className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Open Markdown</TooltipContent>
+            </Tooltip>
+          )}
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={onSave}>
-                <Save className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Save</TooltipContent>
-          </Tooltip>
+          {onRenameDoc && path && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={onRenameDoc}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Rename document</TooltipContent>
+            </Tooltip>
+          )}
 
           <Tooltip>
             <TooltipTrigger asChild>
@@ -104,7 +117,7 @@ export function TitleBar({ onStartSnip }: TitleBarProps): JSX.Element {
                 <FolderOpen className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Open code folder</TooltipContent>
+            <TooltipContent>Open code folder (reader)</TooltipContent>
           </Tooltip>
 
           {onStartSnip && (

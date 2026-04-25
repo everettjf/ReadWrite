@@ -24,6 +24,12 @@ export function createMainWindow(opts: MainWindowOptions): BrowserWindow {
       contextIsolation: true,
       nodeIntegration: false,
       webviewTag: false,
+      // The editor needs to display images via file:// URLs that point
+      // into the user's workspace. With webSecurity on, those are blocked
+      // when the renderer is served over http(s) (dev server). The renderer
+      // only loads local React + our trusted Markdown content — no remote
+      // origin runs in this BrowserWindow — so disabling is safe.
+      webSecurity: false,
     },
   });
 
@@ -80,6 +86,7 @@ export function openSettingsWindow(opts: SettingsWindowOptions): BrowserWindow {
       contextIsolation: true,
       nodeIntegration: false,
       webviewTag: false,
+      webSecurity: false,
     },
   });
 

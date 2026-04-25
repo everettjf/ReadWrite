@@ -7,6 +7,7 @@ import { registerScreenshotIpc } from './screenshot';
 import { registerSettingsIpc } from './settings';
 import { registerAiIpc } from './ai';
 import { registerWechatIpc } from './wechat';
+import { registerWorkspaceIpc } from './workspace';
 
 export interface IpcContext {
   getMainWindow: () => BrowserWindow | null;
@@ -21,4 +22,5 @@ export function registerAllIpcHandlers(ctx: IpcContext): void {
   registerSettingsIpc(ctx);
   registerAiIpc(ctx);
   registerWechatIpc(ctx);
+  registerWorkspaceIpc(ctx);
 }

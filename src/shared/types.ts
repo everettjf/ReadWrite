@@ -97,6 +97,12 @@ export interface AppSettings {
   wechatAppSecret?: string;
   /** Theme id used by the "Copy to WeChat" export pipeline. */
   wechatExportTheme: string;
+
+  // Workspace
+  /** Folder under which each document gets its own subfolder. */
+  workspaceRoot?: string;
+  /** Autosave debounce in ms (0 to disable). */
+  autosaveDebounceMs: number;
 }
 
 export interface FileTreeEntry {

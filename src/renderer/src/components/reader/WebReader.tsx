@@ -2,9 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { WebTab } from '@shared/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, ArrowRight, RotateCw, Camera, ExternalLink } from 'lucide-react';
+import { ArrowLeft, ArrowRight, RotateCw, ExternalLink } from 'lucide-react';
 import { useTabsStore } from '@/stores/tabs';
-import { captureAndInsertScreenshot } from '@/lib/screenshot';
 
 interface WebReaderProps {
   tab: WebTab;
@@ -109,9 +108,6 @@ export function WebReader({ tab, active }: WebReaderProps): JSX.Element {
             if (e.key === 'Enter') onNavigate();
           }}
         />
-        <Button variant="ghost" size="icon" onClick={() => captureAndInsertScreenshot(tab.id)}>
-          <Camera className="h-4 w-4" />
-        </Button>
         <Button variant="ghost" size="icon" onClick={() => window.api.shell.openExternal(tab.url)}>
           <ExternalLink className="h-4 w-4" />
         </Button>

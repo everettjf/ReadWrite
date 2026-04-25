@@ -91,34 +91,10 @@ export function registerScreenshotIpc(ctx: IpcContext): void {
   ipcMain.handle(
     IPC.SCREENSHOT_TAB,
     async (_e, opts: ScreenshotOptions): Promise<ScreenshotResult | null> => {
-      const tabs = ctx.getTabManager();
-      const base = await tabs.screenshot(opts.tabId);
-      if (!base) return null;
-
-      const settings = getCurrentSettings();
-      const { absDir, baseForRelative } = resolveImagesDir(settings, opts.markdownPath ?? null);
-
-      try {
-        await mkdir(absDir, { recursive: true });
-        const filename = `screenshot-${Date.now()}.png`;
-        const savedPath = join(absDir, filename);
-        const buf = Buffer.from(base.dataUrl.split(',')[1]!, 'base64');
-        await writeFile(savedPath, buf);
-
-        let relativePath: string | undefined;
-        if (baseForRelative) {
-          const rel = relative(baseForRelative, savedPath);
-          // Only treat as a portable relative href if it doesn't escape the doc dir
-          if (!rel.startsWith('..') && !isAbsolute(rel)) {
-            relativePath = toPosixPath(rel);
-          }
-        }
-
-        return { ...base, savedPath, relativePath };
-      } catch (err) {
-        console.error('[screenshot] save failed:', err);
-        return base;
-      }
+      // The screenshot capture itself doesn't write to disk anymore — only
+      // the snip flow's IMAGE_SAVE handler does, with the cropped output.
+      // This avoids saving a wasteful full-pane PNG every time the user snips.
+      return await ctx.getTabManager().screenshot(opts.tabId);
     },
   );
 

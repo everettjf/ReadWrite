@@ -4,20 +4,97 @@ import { SplitView } from './components/layout/SplitView';
 import { ReaderPane } from './components/reader/ReaderPane';
 import { EditorPane } from './components/editor/EditorPane';
 import { SnipOverlay } from './components/snip/SnipOverlay';
+import { RenameDocDialog } from './components/dialogs/RenameDocDialog';
 import { useSettingsStore } from './stores/settings';
 import { useEditorStore } from './stores/editor';
 import { startSnip, finalizeSnip } from './lib/snip-runner';
+import {
+  saveMarkdown,
+  createNewDocument,
+  openMarkdownFromDialog,
+  renameDocFolder,
+  openMarkdownAtPath,
+  suggestDocNameFromContent,
+  docBasename,
+  docFolder,
+} from './lib/doc-io';
 import type { PaneSnapshot } from './lib/snip';
 
+const WELCOME_CONTENT = `# Welcome to ReadWrite
+
+Start typing — your document will be saved automatically into a new folder under your workspace (the first edit creates it).
+
+- Open a URL, GitHub repo, PDF, EPUB, or local code folder from the **+** button on the left.
+- Press **⇧⌘S** (or the ✂️ button) to snip a region from the reader and drop the image into your notes.
+- Toggle WYSIWYG / Source from the editor toolbar.
+`;
+
 export function App(): JSX.Element {
-  const load = useSettingsStore((s) => s.load);
-  const loaded = useSettingsStore((s) => s.loaded);
+  const loadSettings = useSettingsStore((s) => s.load);
+  const settingsLoaded = useSettingsStore((s) => s.loaded);
+  const autosaveDebounceMs = useSettingsStore((s) => s.autosaveDebounceMs);
   const [snipSnap, setSnipSnap] = useState<PaneSnapshot | null>(null);
   const [snipToast, setSnipToast] = useState<string | null>(null);
+  const [renameOpen, setRenameOpen] = useState(false);
 
   useEffect(() => {
-    load().catch((e) => console.error('[settings] load failed:', e));
-  }, [load]);
+    loadSettings().catch((e) => console.error('[settings] load failed:', e));
+  }, [loadSettings]);
+
+  // First-launch: ensure the editor starts with the welcome content (in memory only,
+  // no disk folder yet — that's lazily created on the first edit / snip / save).
+  useEffect(() => {
+    const editor = useEditorStore.getState();
+    if (
+      !editor.path &&
+      (editor.content === '' || editor.content.includes('Welcome to ReadWrite'))
+    ) {
+      editor.setContent(WELCOME_CONTENT, { markDirty: false });
+    }
+  }, []);
+
+  // Autosave / lazy doc-folder creation. Single effect that handles both:
+  //   - dirty + no path  →  create new doc folder, persist content
+  //   - dirty + path     →  save in place (with relative-path transform)
+  useEffect(() => {
+    const unsubscribe = useEditorStore.subscribe((state, prev) => {
+      if (state.content === prev.content && state.dirty === prev.dirty) return;
+    });
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    if (autosaveDebounceMs <= 0) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const unsub = useEditorStore.subscribe((state) => {
+      if (timer) clearTimeout(timer);
+      if (!state.dirty) return;
+      timer = setTimeout(async () => {
+        const snap = useEditorStore.getState();
+        if (!snap.dirty) return;
+        try {
+          let path = snap.path;
+          if (!path) {
+            const created = await createNewDocument({
+              initialContent: snap.content,
+              suggestedName: suggestDocNameFromContent(snap.content),
+            });
+            path = created.path;
+            useEditorStore.getState().setPath(path);
+          } else {
+            await saveMarkdown(snap.content, path);
+          }
+          useEditorStore.getState().setDirty(false);
+        } catch (err) {
+          console.error('[autosave] failed:', err);
+        }
+      }, autosaveDebounceMs);
+    });
+    return () => {
+      if (timer) clearTimeout(timer);
+      unsub();
+    };
+  }, [autosaveDebounceMs]);
 
   // Unsaved-changes guard
   useEffect(() => {
@@ -43,7 +120,7 @@ export function App(): JSX.Element {
     try {
       const snap = await startSnip();
       if (!snap) {
-        setSnipToast('Nothing to snip — open a tab first.');
+        setSnipToast('Nothing to snip — open a tab in the reader first.');
         return;
       }
       setSnipSnap(snap);
@@ -56,13 +133,9 @@ export function App(): JSX.Element {
     async (rect: { x: number; y: number; w: number; h: number }) => {
       if (!snipSnap) return;
       try {
-        const result = await finalizeSnip(snipSnap, rect, { alsoSaveToImagesDir: true });
-        const where = result.relativePath ?? result.savedPath;
-        setSnipToast(
-          where
-            ? `Snipped ${result.width}×${result.height} → clipboard, saved as ${where}. Paste anywhere with Cmd/Ctrl+V.`
-            : `Snipped ${result.width}×${result.height} → clipboard. Paste anywhere with Cmd/Ctrl+V.`,
-        );
+        const result = await finalizeSnip(snipSnap, rect, { autoInsertIntoEditor: true });
+        const where = result.relativePath ?? result.savedPath ?? '(in clipboard)';
+        setSnipToast(`Snipped ${result.width}×${result.height} → inserted as ${where}.`);
       } catch (err) {
         setSnipToast(`Snip failed: ${(err as Error).message}`);
       } finally {
@@ -79,20 +152,55 @@ export function App(): JSX.Element {
     setSnipSnap(null);
   }, [snipSnap]);
 
-  // Global keyboard shortcut: Cmd+Shift+S (mac) / Ctrl+Shift+S (win/linux)
+  const onNewDoc = useCallback(async () => {
+    const editor = useEditorStore.getState();
+    if (editor.dirty && !confirm('Discard unsaved changes in the current document?')) return;
+    const created = await createNewDocument({ initialContent: '# Untitled\n\n' });
+    editor.setPath(created.path);
+    editor.setContent(created.content, { markDirty: false });
+  }, []);
+
+  const onOpenDoc = useCallback(async () => {
+    const editor = useEditorStore.getState();
+    if (editor.dirty && !confirm('Discard unsaved changes?')) return;
+    const opened = await openMarkdownFromDialog();
+    if (!opened) return;
+    editor.setPath(opened.path);
+    editor.setContent(opened.content, { markDirty: false });
+  }, []);
+
+  const onRenameConfirm = useCallback(async (newName: string): Promise<void> => {
+    const editor = useEditorStore.getState();
+    if (!editor.path) return;
+    const newPath = await renameDocFolder(editor.path, newName);
+    // Reload so any internal references resolve against the new folder
+    const reopened = await openMarkdownAtPath(newPath);
+    editor.setPath(reopened.path);
+    editor.setContent(reopened.content, { markDirty: false });
+    setRenameOpen(false);
+  }, []);
+
+  // Global keyboard shortcuts
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      const accel = (e.metaKey || e.ctrlKey) && e.shiftKey;
-      if (accel && (e.key === 's' || e.key === 'S')) {
+      const accel = e.metaKey || e.ctrlKey;
+      const shifted = accel && e.shiftKey;
+      if (shifted && (e.key === 's' || e.key === 'S')) {
         e.preventDefault();
         onStartSnip();
+      } else if (accel && !e.shiftKey && (e.key === 'n' || e.key === 'N')) {
+        e.preventDefault();
+        onNewDoc();
+      } else if (accel && !e.shiftKey && (e.key === 'o' || e.key === 'O')) {
+        e.preventDefault();
+        onOpenDoc();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onStartSnip]);
+  }, [onStartSnip, onNewDoc, onOpenDoc]);
 
-  if (!loaded) {
+  if (!settingsLoaded) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
         Loading…
@@ -100,9 +208,17 @@ export function App(): JSX.Element {
     );
   }
 
+  const editorPath = useEditorStore.getState().path;
+  const renameInitial = editorPath ? docBasename(docFolder(editorPath)) : 'Untitled';
+
   return (
     <div className="flex h-full w-full flex-col">
-      <TitleBar onStartSnip={onStartSnip} />
+      <TitleBar
+        onStartSnip={onStartSnip}
+        onNewDoc={onNewDoc}
+        onOpenDoc={onOpenDoc}
+        onRenameDoc={() => setRenameOpen(true)}
+      />
       <div className="flex-1 overflow-hidden">
         <SplitView left={<ReaderPane />} right={<EditorPane />} />
       </div>
@@ -115,6 +231,13 @@ export function App(): JSX.Element {
           {snipToast}
         </div>
       )}
+
+      <RenameDocDialog
+        open={renameOpen}
+        initialName={renameInitial}
+        onCancel={() => setRenameOpen(false)}
+        onConfirm={onRenameConfirm}
+      />
     </div>
   );
 }

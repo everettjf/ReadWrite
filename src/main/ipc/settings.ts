@@ -5,7 +5,6 @@ import { kvGet, kvSet } from '../db';
 import type { AppSettings } from '@shared/types';
 import { openSettingsWindow } from '../window';
 import { join } from 'node:path';
-import { is } from '@electron-toolkit/utils';
 
 const DEFAULT_SETTINGS: AppSettings = {
   theme: 'system',
@@ -28,11 +27,17 @@ const DEFAULT_SETTINGS: AppSettings = {
     'You are a precise Markdown copy-editor. Improve clarity and flow without changing meaning, code, or links. Return only the revised Markdown — no commentary.',
 
   wechatExportTheme: 'default',
+
+  autosaveDebounceMs: 1500,
 };
 
 export function getCurrentSettings(): AppSettings {
   const stored = kvGet<Partial<AppSettings>>('settings') ?? {};
-  return { ...DEFAULT_SETTINGS, ...stored };
+  const merged = { ...DEFAULT_SETTINGS, ...stored };
+  if (!merged.workspaceRoot) {
+    merged.workspaceRoot = join(app.getPath('documents'), 'ReadWrite');
+  }
+  return merged;
 }
 
 function broadcastSettings(next: AppSettings): void {
@@ -66,8 +71,5 @@ export function registerSettingsIpc(_ctx: IpcContext): void {
       indexHtml: join(__dirname, '../renderer/index.html'),
       parent: parent && !parent.isDestroyed() ? parent : undefined,
     });
-    if (is.dev) {
-      // no-op; SettingsWindow is set up to optionally open dev tools later
-    }
   });
 }

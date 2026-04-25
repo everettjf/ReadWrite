@@ -75,6 +75,7 @@ const api = {
     listDir: (path: string): Promise<FileTreeEntry[]> => ipcRenderer.invoke(IPC.FS_LIST_DIR, path),
     watchDir: (path: string): Promise<void> => ipcRenderer.invoke(IPC.FS_WATCH_DIR, path),
     unwatchDir: (path: string): Promise<void> => ipcRenderer.invoke(IPC.FS_UNWATCH_DIR, path),
+    pathExists: (path: string): Promise<boolean> => ipcRenderer.invoke(IPC.FS_PATH_EXISTS, path),
     onWatchEvent: (
       listener: (evt: { root: string; event: string; path: string }) => void,
     ): (() => void) => {
@@ -108,6 +109,23 @@ const api = {
   app: {
     openSettings: (): Promise<void> => ipcRenderer.invoke(IPC.APP_OPEN_SETTINGS),
     getVersion: (): Promise<string> => ipcRenderer.invoke(IPC.APP_GET_VERSION),
+  },
+
+  workspace: {
+    getDefaultRoot: (): Promise<string> => ipcRenderer.invoke(IPC.WORKSPACE_GET_DEFAULT_ROOT),
+    ensureRoot: (): Promise<string> => ipcRenderer.invoke(IPC.WORKSPACE_ENSURE_ROOT),
+    createNew: (opts: {
+      suggestedName?: string;
+      initialContent?: string;
+      parent?: string;
+    }): Promise<string> => ipcRenderer.invoke(IPC.DOC_CREATE_NEW, opts),
+    renameDoc: (opts: {
+      currentPath: string;
+      newName: string;
+      newParent?: string;
+    }): Promise<string> => ipcRenderer.invoke(IPC.DOC_RENAME, opts),
+    revealInFinder: (path: string): Promise<void> =>
+      ipcRenderer.invoke(IPC.DOC_REVEAL_IN_FINDER, path),
   },
 
   ai: {

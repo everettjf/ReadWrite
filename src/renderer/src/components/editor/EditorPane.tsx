@@ -10,10 +10,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Code, Eye, Share2, Download, Sparkles, Loader2, Send, FileCode2 } from 'lucide-react';
+import { Code, Eye, Share2, Sparkles, Loader2, Send, FileCode2 } from 'lucide-react';
 import { MilkdownEditor } from './MilkdownEditor';
 import { SourceEditor } from './SourceEditor';
-import { saveMarkdownToPath } from '@/lib/doc-io';
 import { useMilkdownBridge } from '@/lib/milkdown-instance';
 import { buildWeChatHtml, copyHtmlToClipboard } from '@/lib/wechat-html';
 import { marked } from 'marked';
@@ -30,8 +29,6 @@ function EditorToolbar(): JSX.Element {
   const content = useEditorStore((s) => s.content);
   const path = useEditorStore((s) => s.path);
   const dirty = useEditorStore((s) => s.dirty);
-  const setDirty = useEditorStore((s) => s.setDirty);
-  const setPath = useEditorStore((s) => s.setPath);
   const setContent = useEditorStore((s) => s.setContent);
   const aiEnabled = useSettingsStore((s) => s.aiEnabled);
   const wechatExportTheme = useSettingsStore((s) => s.wechatExportTheme);
@@ -82,14 +79,6 @@ function EditorToolbar(): JSX.Element {
       setStatus({ kind: 'error', text: (err as Error).message });
     } finally {
       setExportBusy(false);
-    }
-  };
-
-  const onSave = async (): Promise<void> => {
-    const saved = await saveMarkdownToPath(content, path);
-    if (saved) {
-      setPath(saved);
-      setDirty(false);
     }
   };
 
@@ -200,10 +189,6 @@ function EditorToolbar(): JSX.Element {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-
-        <Button variant="ghost" size="icon" onClick={onSave} title="Save">
-          <Download className="h-4 w-4" />
-        </Button>
       </div>
       {status && (
         <div
