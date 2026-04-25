@@ -118,3 +118,22 @@ export interface AICompletionResult {
   model: string;
   usage?: { promptTokens?: number; completionTokens?: number; totalTokens?: number };
 }
+
+export interface ImageSaveOptions {
+  /** Path of the markdown file currently being edited (for next-to-doc resolution). */
+  markdownPath?: string | null;
+  /** Image content, base64-encoded. */
+  base64: string;
+  /** MIME type, e.g. 'image/png'. */
+  mime: string;
+  /** Optional friendly name (extension will be coerced from mime). */
+  suggestedName?: string;
+}
+
+export interface ImageSaveResult {
+  savedPath: string;
+  /** Path relative to the current markdown file, when resolution allows it. */
+  relativePath?: string;
+  width?: number;
+  height?: number;
+}

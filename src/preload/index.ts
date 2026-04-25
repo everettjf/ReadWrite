@@ -10,6 +10,8 @@ import type {
   FileTreeEntry,
   AICompletionRequest,
   AICompletionResult,
+  ImageSaveOptions,
+  ImageSaveResult,
 } from '@shared/types';
 
 const api = {
@@ -47,6 +49,11 @@ const api = {
   screenshot: {
     captureTab: (opts: ScreenshotOptions): Promise<ScreenshotResult | null> =>
       ipcRenderer.invoke(IPC.SCREENSHOT_TAB, opts),
+  },
+
+  image: {
+    save: (opts: ImageSaveOptions): Promise<ImageSaveResult> =>
+      ipcRenderer.invoke(IPC.IMAGE_SAVE, opts),
   },
 
   fs: {

@@ -5,9 +5,47 @@ import { gfm } from '@milkdown/preset-gfm';
 import { history } from '@milkdown/plugin-history';
 import { listener, listenerCtx } from '@milkdown/plugin-listener';
 import { clipboard } from '@milkdown/plugin-clipboard';
+import { upload, uploadConfig, type Uploader } from '@milkdown/plugin-upload';
 import { Slice } from '@milkdown/prose/model';
+import type { Node as ProseNode } from '@milkdown/prose/model';
 import { useEditorStore } from '@/stores/editor';
 import { MilkdownBridgeContext, type MilkdownBridge } from '@/lib/milkdown-instance';
+
+/** Saves a pasted/dropped image File to the configured images dir and returns a Markdown-friendly src. */
+async function saveImageFile(file: File): Promise<{ src: string; alt: string }> {
+  const buf = await file.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  let s = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    s += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  const base64 = btoa(s);
+  const result = await window.api.image.save({
+    markdownPath: useEditorStore.getState().path,
+    base64,
+    mime: file.type || 'image/png',
+    suggestedName: (file.name || 'pasted-image').replace(/\.[^./\\]+$/, ''),
+  });
+  const src = result.relativePath ?? `file://${encodeURI(result.savedPath)}`;
+  return { src, alt: file.name || 'image' };
+}
+
+const imageUploader: Uploader = async (files, schema) => {
+  const out: ProseNode[] = [];
+  for (let i = 0; i < files.length; i += 1) {
+    const file = files.item(i);
+    if (!file || !file.type.startsWith('image/')) continue;
+    try {
+      const { src, alt } = await saveImageFile(file);
+      const node = schema.nodes.image?.createAndFill({ src, alt });
+      if (node) out.push(node);
+    } catch (err) {
+      console.error('[milkdown-upload] save failed:', err);
+    }
+  }
+  return out;
+};
 
 export function MilkdownEditor({ children }: { children?: React.ReactNode }): JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -33,11 +71,18 @@ export function MilkdownEditor({ children }: { children?: React.ReactNode }): JS
             setContent(markdown, { markDirty: true });
           });
         })
+        .config((ctx) => {
+          ctx.update(uploadConfig.key, (prev) => ({
+            ...prev,
+            uploader: imageUploader,
+          }));
+        })
         .use(commonmark)
         .use(gfm)
         .use(history)
         .use(listener)
         .use(clipboard)
+        .use(upload)
         .create();
 
       if (cancelled) {

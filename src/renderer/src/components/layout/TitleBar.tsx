@@ -1,11 +1,15 @@
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { FileText, FolderOpen, Settings, Save, FilePlus } from 'lucide-react';
+import { Crop, FileText, FolderOpen, Settings, Save, FilePlus } from 'lucide-react';
 import { useEditorStore } from '@/stores/editor';
 import { useTabsStore } from '@/stores/tabs';
 import { openMarkdownFromDialog, saveMarkdownToPath } from '@/lib/doc-io';
 
-export function TitleBar(): JSX.Element {
+interface TitleBarProps {
+  onStartSnip?: () => void;
+}
+
+export function TitleBar({ onStartSnip }: TitleBarProps): JSX.Element {
   const editor = useEditorStore();
 
   const onNew = (): void => {
@@ -102,6 +106,17 @@ export function TitleBar(): JSX.Element {
             </TooltipTrigger>
             <TooltipContent>Open code folder</TooltipContent>
           </Tooltip>
+
+          {onStartSnip && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={onStartSnip}>
+                  <Crop className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Snip region from reader (⇧⌘S)</TooltipContent>
+            </Tooltip>
+          )}
 
           <Tooltip>
             <TooltipTrigger asChild>

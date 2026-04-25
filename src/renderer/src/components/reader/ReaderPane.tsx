@@ -10,7 +10,7 @@ export function ReaderPane(): JSX.Element {
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null;
 
   return (
-    <div className="flex h-full w-full flex-col bg-background">
+    <div data-rw-pane="reader" className="flex h-full w-full flex-col bg-background">
       <TabBar />
       <div className="relative flex-1 overflow-hidden">
         {tabs.length === 0 && <EmptyState />}

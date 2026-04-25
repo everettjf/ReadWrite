@@ -15,6 +15,7 @@ export const IPC = {
 
   // Screenshot
   SCREENSHOT_TAB: 'screenshot:tab',
+  IMAGE_SAVE: 'image:save',
 
   // Filesystem
   FS_READ_FILE: 'fs:read-file',

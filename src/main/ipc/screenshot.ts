@@ -1,8 +1,14 @@
 import { ipcMain, app } from 'electron';
 import { IPC } from '@shared/ipc-channels';
 import type { IpcContext } from './index';
-import type { ScreenshotOptions, ScreenshotResult, AppSettings } from '@shared/types';
-import { writeFile, mkdir } from 'node:fs/promises';
+import type {
+  ScreenshotOptions,
+  ScreenshotResult,
+  AppSettings,
+  ImageSaveOptions,
+  ImageSaveResult,
+} from '@shared/types';
+import { writeFile, mkdir, access } from 'node:fs/promises';
 import { join, dirname, relative, isAbsolute, sep } from 'node:path';
 import { getCurrentSettings } from './settings';
 
@@ -36,6 +42,49 @@ function resolveImagesDir(settings: AppSettings, markdownPath: string | null): R
 
 function toPosixPath(p: string): string {
   return p.split(sep).join('/');
+}
+
+function mimeToExt(mime: string): string {
+  switch (mime) {
+    case 'image/png':
+      return 'png';
+    case 'image/jpeg':
+      return 'jpg';
+    case 'image/gif':
+      return 'gif';
+    case 'image/webp':
+      return 'webp';
+    case 'image/svg+xml':
+      return 'svg';
+    case 'image/bmp':
+      return 'bmp';
+    default:
+      return 'bin';
+  }
+}
+
+function sanitizeBaseName(name: string): string {
+  return (
+    (name || `image-${Date.now()}`)
+      .replace(/\.[^./\\]+$/, '')
+      .replace(/[^a-zA-Z0-9._-]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 80) || `image-${Date.now()}`
+  );
+}
+
+async function uniqueFilePath(dir: string, baseName: string, ext: string): Promise<string> {
+  const tryPath = (n: number): string =>
+    join(dir, n === 0 ? `${baseName}.${ext}` : `${baseName}-${n}.${ext}`);
+  for (let i = 0; i < 100; i++) {
+    const p = tryPath(i);
+    try {
+      await access(p);
+    } catch {
+      return p;
+    }
+  }
+  return tryPath(Date.now());
 }
 
 export function registerScreenshotIpc(ctx: IpcContext): void {
@@ -72,4 +121,26 @@ export function registerScreenshotIpc(ctx: IpcContext): void {
       }
     },
   );
+
+  ipcMain.handle(IPC.IMAGE_SAVE, async (_e, opts: ImageSaveOptions): Promise<ImageSaveResult> => {
+    const settings = getCurrentSettings();
+    const { absDir, baseForRelative } = resolveImagesDir(settings, opts.markdownPath ?? null);
+    await mkdir(absDir, { recursive: true });
+
+    const ext = mimeToExt(opts.mime);
+    const baseName = sanitizeBaseName(opts.suggestedName ?? `image-${Date.now()}`);
+    const savedPath = await uniqueFilePath(absDir, baseName, ext);
+
+    const buf = Buffer.from(opts.base64, 'base64');
+    await writeFile(savedPath, buf);
+
+    let relativePath: string | undefined;
+    if (baseForRelative) {
+      const rel = relative(baseForRelative, savedPath);
+      if (!rel.startsWith('..') && !isAbsolute(rel)) {
+        relativePath = toPosixPath(rel);
+      }
+    }
+    return { savedPath, relativePath };
+  });
 }
