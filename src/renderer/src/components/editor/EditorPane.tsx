@@ -10,11 +10,23 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Code, Eye, Share2, Sparkles, Loader2, Send, FileCode2 } from 'lucide-react';
+import {
+  Code,
+  Eye,
+  Share2,
+  Sparkles,
+  Loader2,
+  Send,
+  FileCode2,
+  TextSelect,
+  ScrollText,
+  HelpCircle,
+} from 'lucide-react';
 import { MilkdownEditor } from './MilkdownEditor';
 import { SourceEditor } from './SourceEditor';
 import { useMilkdownBridge } from '@/lib/milkdown-instance';
 import { buildWeChatHtml, copyHtmlToClipboard } from '@/lib/wechat-html';
+import { AIInterpretDialog, type InsertTarget } from '@/components/dialogs/AIInterpretDialog';
 import { marked } from 'marked';
 import juice from 'juice';
 
@@ -22,6 +34,11 @@ interface ToolbarStatus {
   kind: 'info' | 'error';
   text: string;
 }
+
+const POLISH_DOC_INSTRUCTION =
+  'Polish the following Markdown document for clarity and flow. Preserve all structure, code, links, images, and formatting. Return only the revised Markdown.';
+const POLISH_SELECTION_INSTRUCTION =
+  'Polish the following Markdown excerpt. Preserve any inline code, links, and emphasis. Return only the revised Markdown.';
 
 function EditorToolbar(): JSX.Element {
   const mode = useEditorStore((s) => s.mode);
@@ -37,8 +54,9 @@ function EditorToolbar(): JSX.Element {
   const [aiBusy, setAiBusy] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
   const [status, setStatus] = useState<ToolbarStatus | null>(null);
+  const [interpretOpen, setInterpretOpen] = useState(false);
+  const [interpretSelection, setInterpretSelection] = useState('');
 
-  // Auto-clear info toasts after a few seconds
   useEffect(() => {
     if (!status || status.kind !== 'info') return;
     const t = setTimeout(() => setStatus(null), 4000);
@@ -82,34 +100,78 @@ function EditorToolbar(): JSX.Element {
     }
   };
 
-  const onPolish = async (): Promise<void> => {
-    setStatus(null);
+  const requireWysiwyg = (): boolean => {
     if (mode !== 'wysiwyg') {
-      setStatus({ kind: 'error', text: 'Switch to WYSIWYG mode to use AI polish.' });
+      setStatus({ kind: 'error', text: 'Switch to WYSIWYG mode to use AI actions.' });
+      return false;
+    }
+    if (!bridge) {
+      setStatus({ kind: 'error', text: 'Editor is still booting — try again in a moment.' });
+      return false;
+    }
+    return true;
+  };
+
+  const onPolishSelection = async (): Promise<void> => {
+    setStatus(null);
+    if (!requireWysiwyg() || !bridge) return;
+    const selection = bridge.getSelectionText();
+    if (!selection.trim()) {
+      setStatus({ kind: 'error', text: 'Select some text first to polish a portion.' });
       return;
     }
-    if (!bridge) return;
-    const selection = bridge.getSelectionText();
-    const target = selection.trim().length > 0 ? selection : content;
-    const isWholeDoc = target === content;
     setAiBusy(true);
     try {
       const result = await window.api.ai.complete({
-        input: target,
-        instruction: isWholeDoc
-          ? 'Polish the following Markdown document for clarity and flow. Preserve structure, code, and links.'
-          : 'Polish the following Markdown excerpt.',
+        input: selection,
+        instruction: POLISH_SELECTION_INSTRUCTION,
       });
-      if (isWholeDoc) {
-        setContent(result.text, { markDirty: true });
-      } else {
-        bridge.replaceSelection(result.text);
-      }
+      bridge.replaceSelection(result.text);
+      setStatus({ kind: 'info', text: 'Polished selection.' });
     } catch (err) {
       setStatus({ kind: 'error', text: (err as Error).message });
     } finally {
       setAiBusy(false);
     }
+  };
+
+  const onPolishDocument = async (): Promise<void> => {
+    setStatus(null);
+    setAiBusy(true);
+    try {
+      const result = await window.api.ai.complete({
+        input: content,
+        instruction: POLISH_DOC_INSTRUCTION,
+      });
+      setContent(result.text, { markDirty: true });
+      setStatus({ kind: 'info', text: 'Polished whole document.' });
+    } catch (err) {
+      setStatus({ kind: 'error', text: (err as Error).message });
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
+  const onOpenInterpret = (): void => {
+    setStatus(null);
+    if (!requireWysiwyg()) return;
+    setInterpretSelection(bridge?.getSelectionText() ?? '');
+    setInterpretOpen(true);
+  };
+
+  const onInterpretInsert = (markdown: string, target: InsertTarget): void => {
+    if (!bridge) return;
+    if (target === 'replace-selection') {
+      bridge.replaceSelection(markdown);
+    } else if (target === 'insert-after-selection') {
+      // ProseMirror tip: insertMarkdown drops at the current cursor; after a
+      // selection that means at the end of the selection range.
+      bridge.insertMarkdown(`\n\n${markdown}\n\n`);
+    } else {
+      setContent(`${content}\n\n${markdown}\n`, { markDirty: true });
+    }
+    setInterpretOpen(false);
+    setStatus({ kind: 'info', text: 'Inserted AI response.' });
   };
 
   return (
@@ -135,25 +197,55 @@ function EditorToolbar(): JSX.Element {
         </div>
         <div className="flex-1" />
         <span className="truncate text-xs text-muted-foreground">
-          {path ? path.split(/[\\/]/).pop() : 'Untitled'}
-          {dirty && ' •'}
+          {path ? path.split(/[\\/]/).pop() : 'Untitled (unsaved)'}
+          {dirty && ' ·'}
         </span>
         <div className="flex-1" />
 
         {aiEnabled && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onPolish}
-            disabled={aiBusy}
-            title="AI polish (selection or whole doc)"
-          >
-            {aiBusy ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Sparkles className="h-4 w-4" />
-            )}
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" title="AI" disabled={aiBusy}>
+                {aiBusy ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-72">
+              <DropdownMenuLabel>AI</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onPolishSelection}>
+                <TextSelect className="mr-2 h-4 w-4" />
+                <div className="flex flex-col">
+                  <span>Polish selection</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    Rewrite selected text in place
+                  </span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onPolishDocument}>
+                <ScrollText className="mr-2 h-4 w-4" />
+                <div className="flex flex-col">
+                  <span>Polish whole document</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    Rewrite the entire document
+                  </span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onOpenInterpret}>
+                <HelpCircle className="mr-2 h-4 w-4" />
+                <div className="flex flex-col">
+                  <span>Interpret with prompt…</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    Custom prompt, review response, then insert
+                  </span>
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
 
         <DropdownMenu>
@@ -200,6 +292,16 @@ function EditorToolbar(): JSX.Element {
         >
           {status.text}
         </div>
+      )}
+
+      {aiEnabled && (
+        <AIInterpretDialog
+          open={interpretOpen}
+          selectionText={interpretSelection}
+          documentText={content}
+          onCancel={() => setInterpretOpen(false)}
+          onInsert={onInterpretInsert}
+        />
       )}
     </>
   );
