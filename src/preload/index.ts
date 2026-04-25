@@ -12,7 +12,21 @@ import type {
   AICompletionResult,
   ImageSaveOptions,
   ImageSaveResult,
+  KnownWorkspace,
 } from '@shared/types';
+
+interface SuggestedParent {
+  path: string;
+  label: string;
+  exists: boolean;
+  hint?: string;
+}
+
+interface DocSummary {
+  path: string;
+  name: string;
+  mtime: number;
+}
 
 const api = {
   tabs: {
@@ -112,8 +126,28 @@ const api = {
   },
 
   workspace: {
-    getDefaultRoot: (): Promise<string> => ipcRenderer.invoke(IPC.WORKSPACE_GET_DEFAULT_ROOT),
-    ensureRoot: (): Promise<string> => ipcRenderer.invoke(IPC.WORKSPACE_ENSURE_ROOT),
+    listKnown: (): Promise<KnownWorkspace[]> => ipcRenderer.invoke(IPC.WORKSPACE_LIST_KNOWN),
+    getActive: (): Promise<string | null> => ipcRenderer.invoke(IPC.WORKSPACE_GET_ACTIVE),
+    setActive: (path: string): Promise<KnownWorkspace> =>
+      ipcRenderer.invoke(IPC.WORKSPACE_SET_ACTIVE, path),
+    onActiveChanged: (listener: (next: string | null) => void): (() => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, next: string | null): void => listener(next);
+      ipcRenderer.on(IPC.WORKSPACE_ACTIVE_CHANGED, handler);
+      return () => ipcRenderer.off(IPC.WORKSPACE_ACTIVE_CHANGED, handler);
+    },
+    create: (opts: { parent: string; name: string; activate?: boolean }): Promise<KnownWorkspace> =>
+      ipcRenderer.invoke(IPC.WORKSPACE_CREATE, opts),
+    renameKnown: (opts: { path: string; newName: string }): Promise<KnownWorkspace[]> =>
+      ipcRenderer.invoke(IPC.WORKSPACE_RENAME_KNOWN, opts),
+    forget: (path: string): Promise<KnownWorkspace[]> =>
+      ipcRenderer.invoke(IPC.WORKSPACE_FORGET, path),
+    getSuggestedParents: (): Promise<SuggestedParent[]> =>
+      ipcRenderer.invoke(IPC.WORKSPACE_GET_SUGGESTED_PARENTS),
+    reveal: (path: string): Promise<void> => ipcRenderer.invoke(IPC.WORKSPACE_REVEAL, path),
+    listDocs: (workspacePath?: string): Promise<DocSummary[]> =>
+      ipcRenderer.invoke(IPC.WORKSPACE_LIST_DOCS, workspacePath),
+
+    // Document operations (anchored to active workspace)
     createNew: (opts: {
       suggestedName?: string;
       initialContent?: string;

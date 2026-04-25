@@ -43,7 +43,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Region-snip tool** (Crop button in the title bar, or ⇧⌘S / Ctrl+Shift+S). Captures a still image of the reader pane, freezes the view, and lets you drag a rectangle to crop. The cropped PNG goes straight to the clipboard *and* to the configured images directory; paste with Cmd/Ctrl+V into the editor (or anywhere else). For web tabs the native `WebContentsView` is briefly hidden during the snip so the renderer-side overlay can be drawn on top, then restored automatically.
 - **Milkdown image paste**: the editor now accepts pasted/dropped images via `@milkdown/plugin-upload`. Each pasted image is saved into the images directory (per the Images settings) and inserted as a Markdown image with a portable relative path — so the snip → paste flow gives you `![image](images/snip-….png)` with no manual disk juggling.
 
-### Changed — Workspace & document folders
+### Changed — Workspaces (Obsidian-style)
+
+- **Workspaces are now first-class.** A workspace is a folder; documents live inside as subfolders. On first launch (or whenever there's no active workspace) you get an onboarding screen with three paths: create a new workspace, open an existing folder, or pick from recent ones.
+- **iCloud-friendly defaults.** On macOS, the workspace creator suggests iCloud Drive as the parent location ahead of `~/Documents` so notes sync across your Macs out of the box. Linux / Windows keep `~/Documents` as the default.
+- **Multiple workspaces.** Switch between workspaces from a dropdown in the title bar (or from Settings → Workspaces). Switching reloads the editor against the new workspace; the old workspace's last document is kept on disk and reopens when you switch back to it. Cross-window sync via a `workspace:active-changed` broadcast keeps the main and Settings windows in sync when one of them switches.
+- **Settings → Workspaces panel** lists every known workspace with switch / reveal-in-Finder / forget actions. "Forget" only removes the entry from the known list; the folder on disk is never deleted.
+- **Migration from 0.1.0 settings**: the old `settings.workspaceRoot` field is auto-migrated to the new active-workspace store on first launch of this version, so existing users land back where they left off.
+
+### Changed — Document folders (carried over)
 
 - **Folder-per-document model**. Every document now lives in its own folder under a configurable workspace root (default `~/Documents/ReadWrite/`). Inside each doc folder: `<name>.md` and `images/`. Move the folder anywhere — image links use relative paths and travel with the doc.
 - **Autosave**. The editor saves the active document to disk a configurable amount of time after the last edit (default 1.5s). The first edit on a fresh app launch creates the doc folder lazily — no save dialog, no friction.

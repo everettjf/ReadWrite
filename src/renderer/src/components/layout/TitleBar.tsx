@@ -1,17 +1,29 @@
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Crop,
   FileText,
-  FolderOpen,
   Settings,
   FilePlus,
   Pencil,
   Folder as FolderIcon,
+  ChevronDown,
+  Plus,
+  ExternalLink,
 } from 'lucide-react';
 import { useEditorStore } from '@/stores/editor';
-import { useTabsStore } from '@/stores/tabs';
+import { useWorkspaceStore } from '@/stores/workspace';
 import { docBasename } from '@/lib/doc-io';
+import { cn } from '@/lib/utils';
 
 interface TitleBarProps {
   onStartSnip?: () => void;
@@ -28,27 +40,68 @@ export function TitleBar({
 }: TitleBarProps): JSX.Element {
   const path = useEditorStore((s) => s.path);
   const dirty = useEditorStore((s) => s.dirty);
+  const active = useWorkspaceStore((s) => s.active);
+  const known = useWorkspaceStore((s) => s.known);
+  const setActive = useWorkspaceStore((s) => s.setActive);
 
-  const onOpenFolder = async (): Promise<void> => {
-    const folder = await window.api.fs.openDialog({ directory: true, title: 'Open code folder' });
-    if (!folder || folder.length === 0) return;
-    const rootPath = folder[0]!;
-    const { makeLocalTab, addTab } = useTabsStore.getState();
-    const tab = makeLocalTab('code', {
-      title: rootPath.split('/').pop() ?? rootPath,
-      rootPath,
+  const activeWorkspaceName =
+    known.find((w) => w.path === active)?.name ?? (active ? docBasename(active) : '—');
+
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const onSwitch = async (targetPath: string): Promise<void> => {
+    if (targetPath === active) return;
+    if (useEditorStore.getState().dirty && !confirm('Discard unsaved changes?')) return;
+    setBusy(targetPath);
+    try {
+      await setActive(targetPath);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const onAddNew = async (): Promise<void> => {
+    const paths = await window.api.fs.openDialog({
+      directory: true,
+      title: 'Pick a parent folder for the new workspace',
     });
-    addTab(tab);
+    if (!paths || paths.length === 0) return;
+    const parent = paths[0]!;
+    const name = prompt('New workspace name:', 'My Notes');
+    if (!name) return;
+    const entry = await window.api.workspace.create({ parent, name, activate: true });
+    await useWorkspaceStore.getState().load();
+    if (useEditorStore.getState().dirty && !confirm('Discard unsaved changes?')) return;
+    await setActive(entry.path);
   };
 
-  const onOpenSettings = (): void => {
-    window.api.app.openSettings().catch((e) => console.error('[settings] open failed:', e));
+  const onAddExisting = async (): Promise<void> => {
+    const paths = await window.api.fs.openDialog({
+      directory: true,
+      title: 'Pick an existing workspace folder',
+    });
+    if (!paths || paths.length === 0) return;
+    if (useEditorStore.getState().dirty && !confirm('Discard unsaved changes?')) return;
+    await setActive(paths[0]!);
   };
 
-  const onReveal = (): void => {
-    if (!path) return;
-    window.api.workspace.revealInFinder(path).catch(() => null);
+  const onRevealActive = (): void => {
+    if (active) window.api.workspace.reveal(active).catch(() => null);
   };
+
+  const onRevealDoc = (): void => {
+    if (path) window.api.workspace.revealInFinder(path).catch(() => null);
+  };
+
+  // Refresh the known list when the dropdown opens
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (open)
+      useWorkspaceStore
+        .getState()
+        .load()
+        .catch(() => null);
+  }, [open]);
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -56,18 +109,67 @@ export function TitleBar({
         className="flex h-10 select-none items-center justify-between border-b border-border bg-background/80 pl-20 pr-2"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       >
-        <div className="flex items-center gap-1">
-          <span className="text-xs font-semibold tracking-tight text-muted-foreground">
-            ReadWrite
-          </span>
+        <div
+          className="flex items-center gap-2 overflow-hidden"
+          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+        >
+          <DropdownMenu open={open} onOpenChange={setOpen}>
+            <DropdownMenuTrigger asChild>
+              <button
+                className={cn(
+                  'flex h-7 items-center gap-1.5 rounded-md border border-border bg-background px-2 text-xs font-medium transition-colors hover:bg-accent',
+                  busy && 'opacity-60',
+                )}
+                title={active ?? undefined}
+              >
+                <FolderIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <span className="max-w-[10rem] truncate">{activeWorkspaceName}</span>
+                <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-80">
+              <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {known.map((w) => (
+                <DropdownMenuItem key={w.path} onSelect={() => onSwitch(w.path)}>
+                  <FolderIcon
+                    className={cn(
+                      'mr-2 h-4 w-4 shrink-0',
+                      w.path === active ? 'text-primary' : 'text-muted-foreground',
+                    )}
+                  />
+                  <div className="flex min-w-0 flex-col">
+                    <span className="truncate text-sm">{w.name}</span>
+                    <span className="truncate font-mono text-[10px] text-muted-foreground">
+                      {w.path}
+                    </span>
+                  </div>
+                  {w.path === active && (
+                    <span className="ml-auto text-[10px] text-muted-foreground">active</span>
+                  )}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={onAddNew}>
+                <Plus className="mr-2 h-4 w-4" /> Create new workspace…
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={onAddExisting}>
+                <FolderIcon className="mr-2 h-4 w-4" /> Open existing folder…
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={onRevealActive} disabled={!active}>
+                <ExternalLink className="mr-2 h-4 w-4" /> Reveal in Finder
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {path && (
             <button
-              className="ml-3 flex max-w-[42rem] items-center gap-1 truncate text-xs text-muted-foreground transition-colors hover:text-foreground"
-              onClick={onReveal}
+              className="flex max-w-[36rem] items-center gap-1 truncate text-xs text-muted-foreground transition-colors hover:text-foreground"
+              onClick={onRevealDoc}
               title="Reveal in Finder"
-              style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
             >
-              <FolderIcon className="h-3 w-3 shrink-0 opacity-60" />
+              <span className="opacity-50">/</span>
               <span className="truncate">{docBasename(path)}</span>
               <span className="shrink-0">{dirty ? '·' : '✓'}</span>
             </button>
@@ -111,15 +213,6 @@ export function TitleBar({
             </Tooltip>
           )}
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={onOpenFolder}>
-                <FolderOpen className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Open code folder (reader)</TooltipContent>
-          </Tooltip>
-
           {onStartSnip && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -133,7 +226,13 @@ export function TitleBar({
 
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={onOpenSettings}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() =>
+                  window.api.app.openSettings().catch((e) => console.error('[settings]', e))
+                }
+              >
                 <Settings className="h-4 w-4" />
               </Button>
             </TooltipTrigger>

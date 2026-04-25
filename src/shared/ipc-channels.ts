@@ -44,9 +44,19 @@ export const IPC = {
   APP_OPEN_SETTINGS: 'app:open-settings',
   APP_GET_VERSION: 'app:get-version',
 
-  // Workspace / document folders
-  WORKSPACE_GET_DEFAULT_ROOT: 'workspace:get-default-root',
-  WORKSPACE_ENSURE_ROOT: 'workspace:ensure-root',
+  // Workspace lifecycle (Obsidian-style: a workspace is a folder containing documents)
+  WORKSPACE_LIST_KNOWN: 'workspace:list-known',
+  WORKSPACE_GET_ACTIVE: 'workspace:get-active',
+  WORKSPACE_SET_ACTIVE: 'workspace:set-active',
+  WORKSPACE_ACTIVE_CHANGED: 'workspace:active-changed',
+  WORKSPACE_CREATE: 'workspace:create',
+  WORKSPACE_RENAME_KNOWN: 'workspace:rename-known',
+  WORKSPACE_FORGET: 'workspace:forget',
+  WORKSPACE_GET_SUGGESTED_PARENTS: 'workspace:get-suggested-parents',
+  WORKSPACE_REVEAL: 'workspace:reveal',
+  WORKSPACE_LIST_DOCS: 'workspace:list-docs',
+
+  // Documents within the active workspace
   DOC_CREATE_NEW: 'doc:create-new',
   DOC_RENAME: 'doc:rename',
   DOC_REVEAL_IN_FINDER: 'doc:reveal-in-finder',

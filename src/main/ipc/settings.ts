@@ -33,11 +33,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 
 export function getCurrentSettings(): AppSettings {
   const stored = kvGet<Partial<AppSettings>>('settings') ?? {};
-  const merged = { ...DEFAULT_SETTINGS, ...stored };
-  if (!merged.workspaceRoot) {
-    merged.workspaceRoot = join(app.getPath('documents'), 'ReadWrite');
-  }
-  return merged;
+  return { ...DEFAULT_SETTINGS, ...stored };
 }
 
 function broadcastSettings(next: AppSettings): void {

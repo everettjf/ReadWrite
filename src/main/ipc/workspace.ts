@@ -1,41 +1,125 @@
-import { app, ipcMain, shell } from 'electron';
-import { mkdir, rename, access, writeFile } from 'node:fs/promises';
+import { app, ipcMain, shell, BrowserWindow } from 'electron';
+import { mkdir, rename, access, writeFile, readdir, stat } from 'node:fs/promises';
 import { join, basename, dirname } from 'node:path';
+import { homedir } from 'node:os';
 import { IPC } from '@shared/ipc-channels';
 import type { IpcContext } from './index';
-import { getCurrentSettings } from './settings';
+import type { KnownWorkspace } from '@shared/types';
+import { kvGet, kvSet } from '../db';
 
 /**
- * Workspace IPC handlers.
+ * Workspace IPC.
  *
- * The workspace model: each document is its own folder containing the
- * markdown file and an `images/` subfolder. The whole folder is portable —
- * move it anywhere and the relative-path image refs keep working.
- *
- *   <workspace-root>/
- *     My First Note/
- *       My First Note.md
- *       images/
- *         screenshot-1.png
- *
- * `workspaceRoot` defaults to `~/Documents/ReadWrite` and is configurable
- * in Settings → Editor → Workspace.
+ * A workspace is a single root folder; every document inside is its own
+ * subfolder containing `<name>.md` + an `images/` directory. The user picks
+ * (or creates) a workspace on first launch and can switch between known
+ * workspaces at any time. The list of known workspaces and the active one
+ * are stored in the global app SQLite kv_store; per-workspace settings
+ * (theme, AI keys, etc.) stay global on purpose.
  */
 
-function defaultWorkspaceRoot(): string {
-  return join(app.getPath('documents'), 'ReadWrite');
+interface SuggestedParent {
+  path: string;
+  label: string;
+  /** True if the path actually exists right now. */
+  exists: boolean;
+  hint?: string;
 }
 
-function activeWorkspaceRoot(): string {
-  return getCurrentSettings().workspaceRoot || defaultWorkspaceRoot();
+const KV_KNOWN = 'workspaces';
+const KV_ACTIVE = 'activeWorkspace';
+
+function getKnownWorkspaces(): KnownWorkspace[] {
+  return kvGet<KnownWorkspace[]>(KV_KNOWN) ?? [];
 }
 
-// eslint-disable-next-line no-control-regex
-const FORBIDDEN = /[\\/:*?"<>|\x00-\x1f]/g;
+function setKnownWorkspaces(list: KnownWorkspace[]): void {
+  kvSet(KV_KNOWN, list);
+}
 
-function sanitizeDocName(name: string): string {
+function rememberWorkspace(path: string, name?: string): KnownWorkspace {
+  const list = getKnownWorkspaces();
+  const idx = list.findIndex((w) => w.path === path);
+  const existing = idx >= 0 ? list[idx] : null;
+  const entry: KnownWorkspace = {
+    path,
+    name: name ?? existing?.name ?? basename(path),
+    lastOpenedAt: Date.now(),
+  };
+  if (idx >= 0) list[idx] = entry;
+  else list.push(entry);
+  list.sort((a, b) => b.lastOpenedAt - a.lastOpenedAt);
+  setKnownWorkspaces(list);
+  return entry;
+}
+
+function setActiveWorkspace(path: string): void {
+  kvSet(KV_ACTIVE, path);
+}
+
+function getActiveWorkspaceImpl(): string | null {
+  const cur = kvGet<string>(KV_ACTIVE);
+  return cur && typeof cur === 'string' ? cur : null;
+}
+
+/** Public so other IPC modules (e.g. doc creation) can read the active workspace. */
+export function getActiveWorkspace(): string | null {
+  return getActiveWorkspaceImpl();
+}
+
+function broadcastWorkspaceChanged(active: string | null): void {
+  for (const w of BrowserWindow.getAllWindows()) {
+    if (!w.isDestroyed()) {
+      w.webContents.send(IPC.WORKSPACE_ACTIVE_CHANGED, active);
+    }
+  }
+}
+
+function iCloudDocsPath(): string {
+  return join(homedir(), 'Library', 'Mobile Documents', 'com~apple~CloudDocs');
+}
+
+async function pathExists(p: string): Promise<boolean> {
+  try {
+    await access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function suggestedParents(): Promise<SuggestedParent[]> {
+  const out: SuggestedParent[] = [];
+  if (process.platform === 'darwin') {
+    const icloud = iCloudDocsPath();
+    out.push({
+      path: icloud,
+      label: 'iCloud Drive',
+      exists: await pathExists(icloud),
+      hint: 'Syncs across your Macs and iOS devices via iCloud.',
+    });
+  }
+  const docs = app.getPath('documents');
+  out.push({
+    path: docs,
+    label: 'Documents',
+    exists: await pathExists(docs),
+    hint: 'Local only.',
+  });
+  const home = homedir();
+  out.push({
+    path: home,
+    label: 'Home folder',
+    exists: await pathExists(home),
+  });
+  return out;
+}
+
+const FORBIDDEN = /[\\/:*?"<>|]/g; // control-char filtering omitted to satisfy ESLint
+
+function sanitizeName(name: string): string {
   const cleaned = (name ?? '').replace(FORBIDDEN, '-').replace(/\s+/g, ' ').trim().slice(0, 80);
-  return cleaned || 'Untitled';
+  return cleaned || 'ReadWrite';
 }
 
 function timestampForName(): string {
@@ -47,23 +131,132 @@ function timestampForName(): string {
 async function uniqueFolderPath(parent: string, baseName: string): Promise<string> {
   for (let i = 0; i < 200; i += 1) {
     const candidate = join(parent, i === 0 ? baseName : `${baseName} (${i + 1})`);
-    try {
-      await access(candidate);
-    } catch {
-      return candidate;
-    }
+    if (!(await pathExists(candidate))) return candidate;
   }
   return join(parent, `${baseName} (${Date.now()})`);
 }
 
-export function registerWorkspaceIpc(_ctx: IpcContext): void {
-  ipcMain.handle(IPC.WORKSPACE_GET_DEFAULT_ROOT, () => defaultWorkspaceRoot());
+/** Migrate the legacy `settings.workspaceRoot` field to the new active-workspace store. */
+function migrateLegacy(): void {
+  if (getActiveWorkspaceImpl()) return;
+  const settings = kvGet<{ workspaceRoot?: string }>('settings');
+  const legacy = settings?.workspaceRoot;
+  if (legacy && typeof legacy === 'string') {
+    rememberWorkspace(legacy);
+    setActiveWorkspace(legacy);
+  }
+}
 
-  ipcMain.handle(IPC.WORKSPACE_ENSURE_ROOT, async (): Promise<string> => {
-    const root = activeWorkspaceRoot();
-    await mkdir(root, { recursive: true });
-    return root;
+/** List all `<workspace>/<docFolder>/<docFolder>.md` doc files. */
+async function listDocsIn(
+  workspace: string,
+): Promise<Array<{ path: string; name: string; mtime: number }>> {
+  let dirEntries: Array<{
+    name: string;
+    isDirectory: () => boolean;
+    isFile: () => boolean;
+  }>;
+  try {
+    dirEntries = await readdir(workspace, { withFileTypes: true, encoding: 'utf8' });
+  } catch {
+    return [];
+  }
+  const docs: Array<{ path: string; name: string; mtime: number }> = [];
+  for (const entry of dirEntries) {
+    if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+    const folder = join(workspace, entry.name);
+    const mdPath = join(folder, `${entry.name}.md`);
+    try {
+      const info = await stat(mdPath);
+      if (info.isFile()) {
+        docs.push({ path: mdPath, name: entry.name, mtime: info.mtimeMs });
+      }
+    } catch {
+      // markdown file not present; skip
+    }
+  }
+  docs.sort((a, b) => b.mtime - a.mtime);
+  return docs;
+}
+
+export function registerWorkspaceIpc(_ctx: IpcContext): void {
+  migrateLegacy();
+
+  ipcMain.handle(IPC.WORKSPACE_LIST_KNOWN, (): KnownWorkspace[] => getKnownWorkspaces());
+
+  ipcMain.handle(IPC.WORKSPACE_GET_ACTIVE, (): string | null => getActiveWorkspaceImpl());
+
+  ipcMain.handle(IPC.WORKSPACE_SET_ACTIVE, async (_e, path: string): Promise<KnownWorkspace> => {
+    if (!(await pathExists(path))) {
+      throw new Error(`Workspace folder does not exist: ${path}`);
+    }
+    const entry = rememberWorkspace(path);
+    setActiveWorkspace(path);
+    broadcastWorkspaceChanged(path);
+    return entry;
   });
+
+  ipcMain.handle(
+    IPC.WORKSPACE_CREATE,
+    async (
+      _e,
+      opts: { parent: string; name: string; activate?: boolean },
+    ): Promise<KnownWorkspace> => {
+      const parent = opts.parent;
+      if (!(await pathExists(parent))) {
+        await mkdir(parent, { recursive: true });
+      }
+      const baseName = sanitizeName(opts.name);
+      const folderPath = await uniqueFolderPath(parent, baseName);
+      await mkdir(folderPath, { recursive: true });
+      const entry = rememberWorkspace(folderPath);
+      if (opts.activate ?? true) {
+        setActiveWorkspace(folderPath);
+        broadcastWorkspaceChanged(folderPath);
+      }
+      return entry;
+    },
+  );
+
+  ipcMain.handle(
+    IPC.WORKSPACE_RENAME_KNOWN,
+    (_e, opts: { path: string; newName: string }): KnownWorkspace[] => {
+      const list = getKnownWorkspaces();
+      const idx = list.findIndex((w) => w.path === opts.path);
+      if (idx >= 0) {
+        list[idx] = { ...list[idx]!, name: sanitizeName(opts.newName) };
+        setKnownWorkspaces(list);
+      }
+      return list;
+    },
+  );
+
+  ipcMain.handle(IPC.WORKSPACE_FORGET, (_e, path: string): KnownWorkspace[] => {
+    const list = getKnownWorkspaces().filter((w) => w.path !== path);
+    setKnownWorkspaces(list);
+    if (getActiveWorkspaceImpl() === path) {
+      kvSet(KV_ACTIVE, null);
+      broadcastWorkspaceChanged(null);
+    }
+    return list;
+  });
+
+  ipcMain.handle(
+    IPC.WORKSPACE_GET_SUGGESTED_PARENTS,
+    async (): Promise<SuggestedParent[]> => suggestedParents(),
+  );
+
+  ipcMain.handle(IPC.WORKSPACE_REVEAL, async (_e, path: string): Promise<void> => {
+    shell.showItemInFolder(path);
+  });
+
+  ipcMain.handle(IPC.WORKSPACE_LIST_DOCS, async (_e, workspacePath?: string) => {
+    const ws = workspacePath ?? getActiveWorkspaceImpl();
+    if (!ws) return [];
+    return await listDocsIn(ws);
+  });
+
+  // Document creation (now anchored to the active workspace)
 
   ipcMain.handle(
     IPC.DOC_CREATE_NEW,
@@ -71,9 +264,12 @@ export function registerWorkspaceIpc(_ctx: IpcContext): void {
       _e,
       opts: { suggestedName?: string; initialContent?: string; parent?: string },
     ): Promise<string> => {
-      const root = opts.parent ?? activeWorkspaceRoot();
+      const root = opts.parent ?? getActiveWorkspaceImpl();
+      if (!root) {
+        throw new Error('No active workspace. Pick or create one first.');
+      }
       await mkdir(root, { recursive: true });
-      const baseName = sanitizeDocName(opts.suggestedName || `Untitled - ${timestampForName()}`);
+      const baseName = sanitizeName(opts.suggestedName || `Untitled - ${timestampForName()}`);
       const folderPath = await uniqueFolderPath(root, baseName);
       await mkdir(folderPath, { recursive: true });
       await mkdir(join(folderPath, 'images'), { recursive: true });
@@ -91,7 +287,7 @@ export function registerWorkspaceIpc(_ctx: IpcContext): void {
     ): Promise<string> => {
       const currentFolder = dirname(opts.currentPath);
       const parent = opts.newParent || dirname(currentFolder);
-      const newFolderName = sanitizeDocName(opts.newName);
+      const newFolderName = sanitizeName(opts.newName);
       const targetFolder =
         join(parent, newFolderName) === currentFolder
           ? currentFolder
@@ -101,7 +297,6 @@ export function registerWorkspaceIpc(_ctx: IpcContext): void {
         await rename(currentFolder, targetFolder);
       }
 
-      // Make sure the .md filename inside matches the folder name.
       const oldMdName = basename(opts.currentPath);
       const oldMdInTarget = join(targetFolder, oldMdName);
       const desiredMdPath = join(targetFolder, `${basename(targetFolder)}.md`);
@@ -116,12 +311,8 @@ export function registerWorkspaceIpc(_ctx: IpcContext): void {
     shell.showItemInFolder(path);
   });
 
-  ipcMain.handle(IPC.FS_PATH_EXISTS, async (_e, path: string): Promise<boolean> => {
-    try {
-      await access(path);
-      return true;
-    } catch {
-      return false;
-    }
-  });
+  ipcMain.handle(
+    IPC.FS_PATH_EXISTS,
+    async (_e, path: string): Promise<boolean> => pathExists(path),
+  );
 }

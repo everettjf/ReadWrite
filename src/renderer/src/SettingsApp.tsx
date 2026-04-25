@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useSettingsStore } from './stores/settings';
 import { cn } from './lib/utils';
-import { Type, Image as ImageIcon, Sparkles, Send, Info, Palette } from 'lucide-react';
+import { Type, Image as ImageIcon, Sparkles, Send, Info, Palette, Folder } from 'lucide-react';
 import { GeneralPanel } from './components/settings/GeneralPanel';
 import { EditorPanel } from './components/settings/EditorPanel';
+import { WorkspacesPanel } from './components/settings/WorkspacesPanel';
 import { ImagesPanel } from './components/settings/ImagesPanel';
 import { AIPanel } from './components/settings/AIPanel';
 import { WeChatPanel } from './components/settings/WeChatPanel';
 import { AboutPanel } from './components/settings/AboutPanel';
 
-type SectionId = 'general' | 'editor' | 'images' | 'ai' | 'wechat' | 'about';
+type SectionId = 'general' | 'workspaces' | 'editor' | 'images' | 'ai' | 'wechat' | 'about';
 
 const SECTIONS: Array<{
   id: SectionId;
@@ -17,6 +18,7 @@ const SECTIONS: Array<{
   Icon: React.ComponentType<{ className?: string }>;
 }> = [
   { id: 'general', label: 'General', Icon: Palette },
+  { id: 'workspaces', label: 'Workspaces', Icon: Folder },
   { id: 'editor', label: 'Editor', Icon: Type },
   { id: 'images', label: 'Images', Icon: ImageIcon },
   { id: 'ai', label: 'AI', Icon: Sparkles },
@@ -75,6 +77,7 @@ export function SettingsApp(): JSX.Element {
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-2xl px-8 py-10">
           {active === 'general' && <GeneralPanel />}
+          {active === 'workspaces' && <WorkspacesPanel />}
           {active === 'editor' && <EditorPanel />}
           {active === 'images' && <ImagesPanel />}
           {active === 'ai' && <AIPanel />}

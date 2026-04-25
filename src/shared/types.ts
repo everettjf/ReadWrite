@@ -98,11 +98,18 @@ export interface AppSettings {
   /** Theme id used by the "Copy to WeChat" export pipeline. */
   wechatExportTheme: string;
 
-  // Workspace
-  /** Folder under which each document gets its own subfolder. */
-  workspaceRoot?: string;
+  // Editor lifecycle
   /** Autosave debounce in ms (0 to disable). */
   autosaveDebounceMs: number;
+}
+
+export interface KnownWorkspace {
+  /** Absolute path to the workspace folder. */
+  path: string;
+  /** Display label, defaults to the basename of the path; user can rename. */
+  name: string;
+  /** Last time the user activated this workspace (ms since epoch). */
+  lastOpenedAt: number;
 }
 
 export interface FileTreeEntry {

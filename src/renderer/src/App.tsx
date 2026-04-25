@@ -5,8 +5,10 @@ import { ReaderPane } from './components/reader/ReaderPane';
 import { EditorPane } from './components/editor/EditorPane';
 import { SnipOverlay } from './components/snip/SnipOverlay';
 import { RenameDocDialog } from './components/dialogs/RenameDocDialog';
+import { WorkspacePicker } from './WorkspacePicker';
 import { useSettingsStore } from './stores/settings';
 import { useEditorStore } from './stores/editor';
+import { useWorkspaceStore } from './stores/workspace';
 import { startSnip, finalizeSnip } from './lib/snip-runner';
 import {
   saveMarkdown,
@@ -22,7 +24,7 @@ import type { PaneSnapshot } from './lib/snip';
 
 const WELCOME_CONTENT = `# Welcome to ReadWrite
 
-Start typing — your document will be saved automatically into a new folder under your workspace (the first edit creates it).
+Start typing — your document will be saved automatically into a new folder under this workspace.
 
 - Open a URL, GitHub repo, PDF, EPUB, or local code folder from the **+** button on the left.
 - Press **⇧⌘S** (or the ✂️ button) to snip a region from the reader and drop the image into your notes.
@@ -33,38 +35,38 @@ export function App(): JSX.Element {
   const loadSettings = useSettingsStore((s) => s.load);
   const settingsLoaded = useSettingsStore((s) => s.loaded);
   const autosaveDebounceMs = useSettingsStore((s) => s.autosaveDebounceMs);
+
+  const loadWorkspace = useWorkspaceStore((s) => s.load);
+  const workspaceLoaded = useWorkspaceStore((s) => s.loaded);
+  const activeWorkspace = useWorkspaceStore((s) => s.active);
+
   const [snipSnap, setSnipSnap] = useState<PaneSnapshot | null>(null);
   const [snipToast, setSnipToast] = useState<string | null>(null);
   const [renameOpen, setRenameOpen] = useState(false);
 
   useEffect(() => {
     loadSettings().catch((e) => console.error('[settings] load failed:', e));
-  }, [loadSettings]);
+    loadWorkspace().catch((e) => console.error('[workspace] load failed:', e));
+  }, [loadSettings, loadWorkspace]);
 
-  // First-launch: ensure the editor starts with the welcome content (in memory only,
-  // no disk folder yet — that's lazily created on the first edit / snip / save).
+  // When the active workspace changes (e.g. switch from the title bar dropdown),
+  // reset the editor so the next user action creates a doc inside the new one.
   useEffect(() => {
+    if (!activeWorkspace) return;
     const editor = useEditorStore.getState();
-    if (
-      !editor.path &&
-      (editor.content === '' || editor.content.includes('Welcome to ReadWrite'))
-    ) {
+    // If the current doc lives outside the new active workspace, clear it.
+    if (editor.path && !editor.path.startsWith(`${activeWorkspace}/`)) {
+      editor.setPath(null);
+      editor.setContent(WELCOME_CONTENT, { markDirty: false });
+    } else if (!editor.path) {
       editor.setContent(WELCOME_CONTENT, { markDirty: false });
     }
-  }, []);
+  }, [activeWorkspace]);
 
-  // Autosave / lazy doc-folder creation. Single effect that handles both:
-  //   - dirty + no path  →  create new doc folder, persist content
-  //   - dirty + path     →  save in place (with relative-path transform)
-  useEffect(() => {
-    const unsubscribe = useEditorStore.subscribe((state, prev) => {
-      if (state.content === prev.content && state.dirty === prev.dirty) return;
-    });
-    return unsubscribe;
-  }, []);
-
+  // Autosave / lazy doc-folder creation
   useEffect(() => {
     if (autosaveDebounceMs <= 0) return;
+    if (!activeWorkspace) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const unsub = useEditorStore.subscribe((state) => {
       if (timer) clearTimeout(timer);
@@ -94,7 +96,7 @@ export function App(): JSX.Element {
       if (timer) clearTimeout(timer);
       unsub();
     };
-  }, [autosaveDebounceMs]);
+  }, [autosaveDebounceMs, activeWorkspace]);
 
   // Unsaved-changes guard
   useEffect(() => {
@@ -173,7 +175,6 @@ export function App(): JSX.Element {
     const editor = useEditorStore.getState();
     if (!editor.path) return;
     const newPath = await renameDocFolder(editor.path, newName);
-    // Reload so any internal references resolve against the new folder
     const reopened = await openMarkdownAtPath(newPath);
     editor.setPath(reopened.path);
     editor.setContent(reopened.content, { markDirty: false });
@@ -200,12 +201,16 @@ export function App(): JSX.Element {
     return () => window.removeEventListener('keydown', onKey);
   }, [onStartSnip, onNewDoc, onOpenDoc]);
 
-  if (!settingsLoaded) {
+  if (!settingsLoaded || !workspaceLoaded) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
         Loading…
       </div>
     );
+  }
+
+  if (!activeWorkspace) {
+    return <WorkspacePicker />;
   }
 
   const editorPath = useEditorStore.getState().path;
