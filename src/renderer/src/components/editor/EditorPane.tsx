@@ -8,6 +8,10 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -22,6 +26,9 @@ import {
   ScrollText,
   HelpCircle,
   Upload,
+  Languages,
+  FileSearch,
+  BookOpen,
 } from 'lucide-react';
 import { MilkdownEditor } from './MilkdownEditor';
 import { SourceEditor } from './SourceEditor';
@@ -41,6 +48,14 @@ const POLISH_DOC_INSTRUCTION =
   'Polish the following Markdown document for clarity and flow. Preserve all structure, code, links, images, and formatting. Return only the revised Markdown.';
 const POLISH_SELECTION_INSTRUCTION =
   'Polish the following Markdown excerpt. Preserve any inline code, links, and emphasis. Return only the revised Markdown.';
+const TRANSLATE_EN_INSTRUCTION =
+  'Translate the following Markdown to natural, idiomatic English. Preserve all structure, code, links, images, and formatting. Return only the translated Markdown.';
+const TRANSLATE_ZH_INSTRUCTION =
+  '把下面的 Markdown 翻译成自然、地道的中文。保留所有结构、代码、链接、图片和格式。只返回翻译后的 Markdown。';
+const SUMMARIZE_INSTRUCTION =
+  'Summarize the following Markdown into 3 bullet points. Return only the bullet list.';
+const EXPLAIN_INSTRUCTION =
+  'Explain the following Markdown excerpt step by step in plain language. Return only the explanation, in the same language as the original.';
 
 function EditorToolbar(): JSX.Element {
   const mode = useEditorStore((s) => s.mode);
@@ -155,6 +170,46 @@ function EditorToolbar(): JSX.Element {
     }
   };
 
+  /** Generic AI action: applies an instruction to selection (replace) or whole doc (replace). */
+  const runAiAction = async (
+    instruction: string,
+    label: string,
+    target: 'selection' | 'document',
+  ): Promise<void> => {
+    setStatus(null);
+    if (!requireWysiwyg() || !bridge) return;
+
+    let input: string;
+    if (target === 'selection') {
+      const selection = bridge.getSelectionText();
+      if (!selection.trim()) {
+        setStatus({
+          kind: 'error',
+          text: `Select some text first to ${label.toLowerCase()} a portion.`,
+        });
+        return;
+      }
+      input = selection;
+    } else {
+      input = content;
+    }
+
+    setAiBusy(true);
+    try {
+      const result = await window.api.ai.complete({ input, instruction });
+      if (target === 'selection') {
+        bridge.replaceSelection(result.text);
+      } else {
+        setContent(result.text, { markDirty: true });
+      }
+      setStatus({ kind: 'info', text: `${label} done.` });
+    } catch (err) {
+      setStatus({ kind: 'error', text: (err as Error).message });
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
   const onOpenInterpret = (): void => {
     setStatus(null);
     if (!requireWysiwyg()) return;
@@ -219,24 +274,88 @@ function EditorToolbar(): JSX.Element {
             <DropdownMenuContent align="end" className="w-72">
               <DropdownMenuLabel>AI</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onPolishSelection}>
-                <TextSelect className="mr-2 h-4 w-4" />
-                <div className="flex flex-col">
-                  <span>Polish selection</span>
-                  <span className="text-[10px] text-muted-foreground">
-                    Rewrite selected text in place
-                  </span>
-                </div>
+
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Polish
+                </DropdownMenuSubTrigger>
+                <DropdownMenuPortal>
+                  <DropdownMenuSubContent className="w-56">
+                    <DropdownMenuItem onClick={onPolishSelection}>
+                      <TextSelect className="mr-2 h-4 w-4" /> Selection
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={onPolishDocument}>
+                      <ScrollText className="mr-2 h-4 w-4" /> Whole document
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuPortal>
+              </DropdownMenuSub>
+
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Languages className="mr-2 h-4 w-4" />
+                  Translate
+                </DropdownMenuSubTrigger>
+                <DropdownMenuPortal>
+                  <DropdownMenuSubContent className="w-64">
+                    <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      Selection →
+                    </DropdownMenuLabel>
+                    <DropdownMenuItem
+                      onClick={() =>
+                        runAiAction(TRANSLATE_EN_INSTRUCTION, 'Translate to English', 'selection')
+                      }
+                    >
+                      English
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() =>
+                        runAiAction(TRANSLATE_ZH_INSTRUCTION, '翻译为中文', 'selection')
+                      }
+                    >
+                      中文
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      Whole document →
+                    </DropdownMenuLabel>
+                    <DropdownMenuItem
+                      onClick={() =>
+                        runAiAction(
+                          TRANSLATE_EN_INSTRUCTION,
+                          'Translate doc to English',
+                          'document',
+                        )
+                      }
+                    >
+                      English
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() =>
+                        runAiAction(TRANSLATE_ZH_INSTRUCTION, '翻译全文为中文', 'document')
+                      }
+                    >
+                      中文
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuPortal>
+              </DropdownMenuSub>
+
+              <DropdownMenuItem
+                onClick={() => runAiAction(SUMMARIZE_INSTRUCTION, 'Summarize', 'document')}
+              >
+                <FileSearch className="mr-2 h-4 w-4" />
+                Summarize document
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={onPolishDocument}>
-                <ScrollText className="mr-2 h-4 w-4" />
-                <div className="flex flex-col">
-                  <span>Polish whole document</span>
-                  <span className="text-[10px] text-muted-foreground">
-                    Rewrite the entire document
-                  </span>
-                </div>
+
+              <DropdownMenuItem
+                onClick={() => runAiAction(EXPLAIN_INSTRUCTION, 'Explain', 'selection')}
+              >
+                <BookOpen className="mr-2 h-4 w-4" />
+                Explain selection
               </DropdownMenuItem>
+
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onOpenInterpret}>
                 <HelpCircle className="mr-2 h-4 w-4" />
