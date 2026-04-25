@@ -5,12 +5,14 @@
   <p>
     <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
     <img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey">
-    <img alt="Status" src="https://img.shields.io/badge/status-pre--alpha-orange">
+    <a href="https://github.com/everettjf/ReadWrite/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/everettjf/ReadWrite?include_prereleases&color=blue"></a>
     <a href="https://github.com/everettjf/ReadWrite/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/everettjf/ReadWrite/actions/workflows/ci.yml/badge.svg"></a>
   </p>
 </div>
 
 ReadWrite is a cross-platform desktop app that puts a **reader** and a **Markdown editor** side-by-side. Read a paper, GitHub repo, PDF, or EPUB on the left; write notes — with a working WYSIWYG editor, screenshot-to-clipboard, AI polish, and one-click export to your blog or 微信公众号 — on the right. No tab-switching, no Cmd+V dance.
+
+> **Latest release**: [v0.1.0](https://github.com/everettjf/ReadWrite/releases/latest) — download the .dmg / .exe / .AppImage from the releases page. Binaries are unsigned; on macOS open with right-click → Open the first time, on Windows confirm the SmartScreen warning.
 
 ---
 
