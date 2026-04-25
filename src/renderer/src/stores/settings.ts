@@ -24,6 +24,7 @@ const DEFAULTS: AppSettings = {
   aiSystemPrompt: '',
   wechatExportTheme: 'default',
   autosaveDebounceMs: 1500,
+  sidebarVisible: true,
 } as AppSettings;
 
 export const useSettingsStore = create<SettingsState>((set) => ({

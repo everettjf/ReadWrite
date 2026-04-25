@@ -5,10 +5,12 @@ import { ReaderPane } from './components/reader/ReaderPane';
 import { EditorPane } from './components/editor/EditorPane';
 import { SnipOverlay } from './components/snip/SnipOverlay';
 import { RenameDocDialog } from './components/dialogs/RenameDocDialog';
+import { DocsSidebar } from './components/sidebar/DocsSidebar';
 import { WorkspacePicker } from './WorkspacePicker';
 import { useSettingsStore } from './stores/settings';
 import { useEditorStore } from './stores/editor';
 import { useWorkspaceStore } from './stores/workspace';
+import type { DocSummary } from '@shared/types';
 import { startSnip, finalizeSnip } from './lib/snip-runner';
 import {
   saveMarkdown,
@@ -35,10 +37,12 @@ export function App(): JSX.Element {
   const loadSettings = useSettingsStore((s) => s.load);
   const settingsLoaded = useSettingsStore((s) => s.loaded);
   const autosaveDebounceMs = useSettingsStore((s) => s.autosaveDebounceMs);
+  const sidebarVisible = useSettingsStore((s) => s.sidebarVisible);
 
   const loadWorkspace = useWorkspaceStore((s) => s.load);
   const workspaceLoaded = useWorkspaceStore((s) => s.loaded);
   const activeWorkspace = useWorkspaceStore((s) => s.active);
+  const refreshDocs = useWorkspaceStore((s) => s.refreshDocs);
 
   const [snipSnap, setSnipSnap] = useState<PaneSnapshot | null>(null);
   const [snipToast, setSnipToast] = useState<string | null>(null);
@@ -76,6 +80,7 @@ export function App(): JSX.Element {
         if (!snap.dirty) return;
         try {
           let path = snap.path;
+          let createdNew = false;
           if (!path) {
             const created = await createNewDocument({
               initialContent: snap.content,
@@ -83,10 +88,14 @@ export function App(): JSX.Element {
             });
             path = created.path;
             useEditorStore.getState().setPath(path);
+            createdNew = true;
           } else {
             await saveMarkdown(snap.content, path);
           }
           useEditorStore.getState().setDirty(false);
+          if (createdNew) {
+            await refreshDocs();
+          }
         } catch (err) {
           console.error('[autosave] failed:', err);
         }
@@ -96,7 +105,7 @@ export function App(): JSX.Element {
       if (timer) clearTimeout(timer);
       unsub();
     };
-  }, [autosaveDebounceMs, activeWorkspace]);
+  }, [autosaveDebounceMs, activeWorkspace, refreshDocs]);
 
   // Unsaved-changes guard
   useEffect(() => {
@@ -160,7 +169,8 @@ export function App(): JSX.Element {
     const created = await createNewDocument({ initialContent: '# Untitled\n\n' });
     editor.setPath(created.path);
     editor.setContent(created.content, { markDirty: false });
-  }, []);
+    await refreshDocs();
+  }, [refreshDocs]);
 
   const onOpenDoc = useCallback(async () => {
     const editor = useEditorStore.getState();
@@ -171,15 +181,27 @@ export function App(): JSX.Element {
     editor.setContent(opened.content, { markDirty: false });
   }, []);
 
-  const onRenameConfirm = useCallback(async (newName: string): Promise<void> => {
+  const onSwitchDoc = useCallback(async (doc: DocSummary): Promise<void> => {
     const editor = useEditorStore.getState();
-    if (!editor.path) return;
-    const newPath = await renameDocFolder(editor.path, newName);
-    const reopened = await openMarkdownAtPath(newPath);
-    editor.setPath(reopened.path);
-    editor.setContent(reopened.content, { markDirty: false });
-    setRenameOpen(false);
+    if (editor.dirty && !confirm('Discard unsaved changes?')) return;
+    const opened = await openMarkdownAtPath(doc.path);
+    editor.setPath(opened.path);
+    editor.setContent(opened.content, { markDirty: false });
   }, []);
+
+  const onRenameConfirm = useCallback(
+    async (newName: string): Promise<void> => {
+      const editor = useEditorStore.getState();
+      if (!editor.path) return;
+      const newPath = await renameDocFolder(editor.path, newName);
+      const reopened = await openMarkdownAtPath(newPath);
+      editor.setPath(reopened.path);
+      editor.setContent(reopened.content, { markDirty: false });
+      setRenameOpen(false);
+      await refreshDocs();
+    },
+    [refreshDocs],
+  );
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -225,7 +247,12 @@ export function App(): JSX.Element {
         onRenameDoc={() => setRenameOpen(true)}
       />
       <div className="flex-1 overflow-hidden">
-        <SplitView left={<ReaderPane />} right={<EditorPane />} />
+        <SplitView
+          sidebar={<DocsSidebar onSwitchDoc={onSwitchDoc} />}
+          sidebarVisible={sidebarVisible}
+          left={<ReaderPane />}
+          right={<EditorPane />}
+        />
       </div>
 
       {snipSnap && (

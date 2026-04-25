@@ -29,3 +29,28 @@ export function toGithubWebUrl(input: string): string | null {
   if (m) return `https://github.com/${m[1]}/${m[2]}`;
   return null;
 }
+
+export function relativeTime(ms: number): string {
+  const now = Date.now();
+  const diff = now - ms;
+  if (diff < 60_000) return 'just now';
+  if (diff < 3600_000) {
+    const m = Math.round(diff / 60_000);
+    return `${m} min${m === 1 ? '' : 's'} ago`;
+  }
+  if (diff < 86_400_000) {
+    const h = Math.round(diff / 3_600_000);
+    return `${h} hour${h === 1 ? '' : 's'} ago`;
+  }
+  if (diff < 7 * 86_400_000) {
+    const d = Math.round(diff / 86_400_000);
+    return `${d} day${d === 1 ? '' : 's'} ago`;
+  }
+  const date = new Date(ms);
+  const sameYear = date.getFullYear() === new Date(now).getFullYear();
+  return date.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    ...(sameYear ? {} : { year: 'numeric' }),
+  });
+}

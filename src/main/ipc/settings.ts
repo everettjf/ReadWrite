@@ -29,6 +29,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   wechatExportTheme: 'default',
 
   autosaveDebounceMs: 1500,
+
+  sidebarVisible: true,
 };
 
 export function getCurrentSettings(): AppSettings {

@@ -101,6 +101,19 @@ export interface AppSettings {
   // Editor lifecycle
   /** Autosave debounce in ms (0 to disable). */
   autosaveDebounceMs: number;
+
+  // Layout
+  /** Whether the workspace docs sidebar is visible. */
+  sidebarVisible: boolean;
+}
+
+export interface DocSummary {
+  /** Absolute path to the markdown file. */
+  path: string;
+  /** Display name (the doc folder's basename, which always matches the .md basename). */
+  name: string;
+  /** mtime in milliseconds (sortable). */
+  mtime: number;
 }
 
 export interface KnownWorkspace {

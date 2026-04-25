@@ -311,6 +311,12 @@ export function registerWorkspaceIpc(_ctx: IpcContext): void {
     shell.showItemInFolder(path);
   });
 
+  ipcMain.handle(IPC.DOC_TRASH, async (_e, mdPath: string): Promise<void> => {
+    // Move the entire document folder (not just the .md) to the system Trash.
+    const folder = dirname(mdPath);
+    await shell.trashItem(folder);
+  });
+
   ipcMain.handle(
     IPC.FS_PATH_EXISTS,
     async (_e, path: string): Promise<boolean> => pathExists(path),

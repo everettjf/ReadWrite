@@ -51,6 +51,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Settings → Workspaces panel** lists every known workspace with switch / reveal-in-Finder / forget actions. "Forget" only removes the entry from the known list; the folder on disk is never deleted.
 - **Migration from 0.1.0 settings**: the old `settings.workspaceRoot` field is auto-migrated to the new active-workspace store on first launch of this version, so existing users land back where they left off.
 
+### Added — Docs sidebar
+
+- **Workspace docs sidebar**, on by default. The split view now has three panes: docs (left, ~18%), reader (middle), editor (right). The sidebar lists every document in the active workspace sorted by last modified, with the currently-open one highlighted. Toggle via the new sidebar icon in the title bar. Width is resizable; the visibility preference persists.
+- Each row has a per-doc actions menu (⋯): **Rename**, **Reveal in Finder**, **Move to Trash**. "Move to Trash" routes through Electron's `shell.trashItem` so the doc folder lands in the system Trash where it can be restored.
+- The "+" in the sidebar header creates a new doc folder (same flow as the title-bar New button).
+- The store auto-refreshes on workspace switch and after any internal mutation (create / rename / trash). New docs that the user creates by simply starting to type — autosave silently materializing a folder — also surface in the list immediately.
+
 ### Changed — Document folders (carried over)
 
 - **Folder-per-document model**. Every document now lives in its own folder under a configurable workspace root (default `~/Documents/ReadWrite/`). Inside each doc folder: `<name>.md` and `images/`. Move the folder anywhere — image links use relative paths and travel with the doc.

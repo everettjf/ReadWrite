@@ -19,9 +19,12 @@ import {
   ChevronDown,
   Plus,
   ExternalLink,
+  PanelLeftOpen,
+  PanelLeftClose,
 } from 'lucide-react';
 import { useEditorStore } from '@/stores/editor';
 import { useWorkspaceStore } from '@/stores/workspace';
+import { useSettingsStore } from '@/stores/settings';
 import { docBasename } from '@/lib/doc-io';
 import { cn } from '@/lib/utils';
 
@@ -43,6 +46,8 @@ export function TitleBar({
   const active = useWorkspaceStore((s) => s.active);
   const known = useWorkspaceStore((s) => s.known);
   const setActive = useWorkspaceStore((s) => s.setActive);
+  const sidebarVisible = useSettingsStore((s) => s.sidebarVisible);
+  const updateSettings = useSettingsStore((s) => s.update);
 
   const activeWorkspaceName =
     known.find((w) => w.path === active)?.name ?? (active ? docBasename(active) : '—');
@@ -113,6 +118,26 @@ export function TitleBar({
           className="flex items-center gap-2 overflow-hidden"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => updateSettings({ sidebarVisible: !sidebarVisible })}
+              >
+                {sidebarVisible ? (
+                  <PanelLeftClose className="h-4 w-4" />
+                ) : (
+                  <PanelLeftOpen className="h-4 w-4" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {sidebarVisible ? 'Hide docs sidebar' : 'Show docs sidebar'}
+            </TooltipContent>
+          </Tooltip>
+
           <DropdownMenu open={open} onOpenChange={setOpen}>
             <DropdownMenuTrigger asChild>
               <button

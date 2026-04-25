@@ -60,6 +60,7 @@ export const IPC = {
   DOC_CREATE_NEW: 'doc:create-new',
   DOC_RENAME: 'doc:rename',
   DOC_REVEAL_IN_FINDER: 'doc:reveal-in-finder',
+  DOC_TRASH: 'doc:trash',
   FS_PATH_EXISTS: 'fs:path-exists',
 
   // AI

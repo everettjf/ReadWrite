@@ -13,6 +13,7 @@ import type {
   ImageSaveOptions,
   ImageSaveResult,
   KnownWorkspace,
+  DocSummary,
 } from '@shared/types';
 
 interface SuggestedParent {
@@ -20,12 +21,6 @@ interface SuggestedParent {
   label: string;
   exists: boolean;
   hint?: string;
-}
-
-interface DocSummary {
-  path: string;
-  name: string;
-  mtime: number;
 }
 
 const api = {
@@ -160,6 +155,7 @@ const api = {
     }): Promise<string> => ipcRenderer.invoke(IPC.DOC_RENAME, opts),
     revealInFinder: (path: string): Promise<void> =>
       ipcRenderer.invoke(IPC.DOC_REVEAL_IN_FINDER, path),
+    trashDoc: (mdPath: string): Promise<void> => ipcRenderer.invoke(IPC.DOC_TRASH, mdPath),
   },
 
   ai: {
