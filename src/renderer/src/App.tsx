@@ -67,6 +67,38 @@ export function App(): JSX.Element {
     }
   }, [activeWorkspace]);
 
+  // Auto-refresh the docs list when the workspace folder changes on disk
+  // (Finder, Git pulls, iCloud sync, etc.). We filter out images/ subfolders
+  // so saving a screenshot doesn't trigger a refresh, and debounce so a burst
+  // of FS events coalesces into one refetch.
+  useEffect(() => {
+    if (!activeWorkspace) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+
+    window.api.fs.watchDir(activeWorkspace).catch(() => null);
+
+    const off = window.api.fs.onWatchEvent((evt) => {
+      if (cancelled) return;
+      if (evt.root !== activeWorkspace) return;
+      // Ignore events that happen inside any doc's images/ folder.
+      if (/[\\/]images[\\/]/.test(evt.path)) return;
+      // Ignore hidden files (.DS_Store etc).
+      if (/[\\/]\.[^\\/]+(?:[\\/]|$)/.test(evt.path)) return;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (!cancelled) refreshDocs().catch(() => null);
+      }, 400);
+    });
+
+    return () => {
+      cancelled = true;
+      off();
+      if (timer) clearTimeout(timer);
+      window.api.fs.unwatchDir(activeWorkspace).catch(() => null);
+    };
+  }, [activeWorkspace, refreshDocs]);
+
   // Autosave / lazy doc-folder creation
   useEffect(() => {
     if (autosaveDebounceMs <= 0) return;

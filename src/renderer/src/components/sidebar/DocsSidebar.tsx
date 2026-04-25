@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useWorkspaceStore } from '@/stores/workspace';
 import { useEditorStore } from '@/stores/editor';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +18,8 @@ import {
   Pencil,
   Trash2,
   ExternalLink,
+  Search,
+  X,
 } from 'lucide-react';
 import { cn, relativeTime } from '@/lib/utils';
 import { createNewDocument, openMarkdownAtPath, renameDocFolder, docBasename } from '@/lib/doc-io';
@@ -34,9 +37,16 @@ export function DocsSidebar({ onSwitchDoc }: DocsSidebarProps): JSX.Element {
   const editorPath = useEditorStore((s) => s.path);
 
   const [busy, setBusy] = useState(false);
+  const [filter, setFilter] = useState('');
 
   const activeWorkspaceName =
     known.find((w) => w.path === active)?.name ?? (active ? docBasename(active) : '—');
+
+  const filteredDocs = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    if (!q) return docs;
+    return docs.filter((d) => d.name.toLowerCase().includes(q));
+  }, [filter, docs]);
 
   const onNew = async (): Promise<void> => {
     const editor = useEditorStore.getState();
@@ -86,14 +96,38 @@ export function DocsSidebar({ onSwitchDoc }: DocsSidebarProps): JSX.Element {
         </Button>
       </div>
 
+      <div className="relative shrink-0 px-2 py-1.5">
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="Filter…"
+          className="h-7 pl-7 pr-7 text-xs"
+        />
+        {filter && (
+          <button
+            type="button"
+            onClick={() => setFilter('')}
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-accent"
+            title="Clear filter"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        )}
+      </div>
+
       <div className="flex-1 overflow-y-auto">
         {docs.length === 0 ? (
           <div className="px-3 py-6 text-center text-xs text-muted-foreground">
             No documents yet. Click <span className="font-mono">+</span> to create one.
           </div>
+        ) : filteredDocs.length === 0 ? (
+          <div className="px-3 py-6 text-center text-xs text-muted-foreground">
+            No matches for &ldquo;{filter}&rdquo;.
+          </div>
         ) : (
           <ul className="py-1">
-            {docs.map((doc) => {
+            {filteredDocs.map((doc) => {
               const isActive = doc.path === editorPath;
               return (
                 <li key={doc.path}>
