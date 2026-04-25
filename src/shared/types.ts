@@ -95,6 +95,8 @@ export interface AppSettings {
   // WeChat 公众号
   wechatAppId?: string;
   wechatAppSecret?: string;
+  /** Theme id used by the "Copy to WeChat" export pipeline. */
+  wechatExportTheme: string;
 }
 
 export interface FileTreeEntry {

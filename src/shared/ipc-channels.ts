@@ -25,6 +25,7 @@ export const IPC = {
   FS_WATCH_DIR: 'fs:watch-dir',
   FS_UNWATCH_DIR: 'fs:unwatch-dir',
   FS_WATCH_EVENT: 'fs:watch-event',
+  FS_READ_FILE_BASE64: 'fs:read-file-base64',
 
   // Settings / state
   SETTINGS_GET: 'settings:get',

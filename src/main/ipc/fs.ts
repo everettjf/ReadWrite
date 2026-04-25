@@ -47,6 +47,29 @@ export function registerFsIpc(ctx: IpcContext): void {
   });
 
   ipcMain.handle(
+    IPC.FS_READ_FILE_BASE64,
+    async (_e, filePath: string): Promise<{ base64: string; mime: string }> => {
+      const buf = await readFile(filePath);
+      const ext = filePath.toLowerCase().split('.').pop() ?? '';
+      const mime =
+        ext === 'jpg' || ext === 'jpeg'
+          ? 'image/jpeg'
+          : ext === 'png'
+            ? 'image/png'
+            : ext === 'gif'
+              ? 'image/gif'
+              : ext === 'webp'
+                ? 'image/webp'
+                : ext === 'svg'
+                  ? 'image/svg+xml'
+                  : ext === 'bmp'
+                    ? 'image/bmp'
+                    : 'application/octet-stream';
+      return { base64: buf.toString('base64'), mime };
+    },
+  );
+
+  ipcMain.handle(
     IPC.FS_WRITE_FILE,
     async (_e, payload: { path: string; content: string }): Promise<void> => {
       await mkdir(dirname(payload.path), { recursive: true });

@@ -1,13 +1,28 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useEditorStore } from '@/stores/editor';
 import { useSettingsStore } from '@/stores/settings';
 import { Button } from '@/components/ui/button';
-import { Code, Eye, Copy, Download, Sparkles, Loader2 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Code, Eye, Share2, Download, Sparkles, Loader2, Send, FileCode2 } from 'lucide-react';
 import { MilkdownEditor } from './MilkdownEditor';
 import { SourceEditor } from './SourceEditor';
 import { saveMarkdownToPath } from '@/lib/doc-io';
 import { useMilkdownBridge } from '@/lib/milkdown-instance';
+import { buildWeChatHtml, copyHtmlToClipboard } from '@/lib/wechat-html';
+import { marked } from 'marked';
 import juice from 'juice';
+
+interface ToolbarStatus {
+  kind: 'info' | 'error';
+  text: string;
+}
 
 function EditorToolbar(): JSX.Element {
   const mode = useEditorStore((s) => s.mode);
@@ -19,14 +34,55 @@ function EditorToolbar(): JSX.Element {
   const setPath = useEditorStore((s) => s.setPath);
   const setContent = useEditorStore((s) => s.setContent);
   const aiEnabled = useSettingsStore((s) => s.aiEnabled);
+  const wechatExportTheme = useSettingsStore((s) => s.wechatExportTheme);
   const bridge = useMilkdownBridge();
 
   const [aiBusy, setAiBusy] = useState(false);
-  const [aiError, setAiError] = useState<string | null>(null);
+  const [exportBusy, setExportBusy] = useState(false);
+  const [status, setStatus] = useState<ToolbarStatus | null>(null);
+
+  // Auto-clear info toasts after a few seconds
+  useEffect(() => {
+    if (!status || status.kind !== 'info') return;
+    const t = setTimeout(() => setStatus(null), 4000);
+    return () => clearTimeout(t);
+  }, [status]);
 
   const onCopyHtml = async (): Promise<void> => {
-    const html = await renderMarkdownToHtml(content);
-    await navigator.clipboard.writeText(juice(html));
+    setStatus(null);
+    try {
+      const rawHtml = await marked.parse(content);
+      const html = juice(rawHtml);
+      await copyHtmlToClipboard(html);
+      setStatus({ kind: 'info', text: 'Copied as inlined HTML — paste into your destination.' });
+    } catch (err) {
+      setStatus({ kind: 'error', text: (err as Error).message });
+    }
+  };
+
+  const onCopyToWeChat = async (): Promise<void> => {
+    setStatus(null);
+    setExportBusy(true);
+    try {
+      const { html, warnings } = await buildWeChatHtml(content, {
+        markdownPath: path,
+        themeId: wechatExportTheme,
+      });
+      await copyHtmlToClipboard(html);
+      const tail =
+        warnings.length > 0
+          ? ` (${warnings.length} warning${warnings.length === 1 ? '' : 's'})`
+          : '';
+      setStatus({
+        kind: 'info',
+        text: `Copied to clipboard. Open mp.weixin.qq.com → 写新图文 → paste.${tail}`,
+      });
+      if (warnings.length > 0) console.warn('[wechat-export] warnings:', warnings);
+    } catch (err) {
+      setStatus({ kind: 'error', text: (err as Error).message });
+    } finally {
+      setExportBusy(false);
+    }
   };
 
   const onSave = async (): Promise<void> => {
@@ -38,9 +94,9 @@ function EditorToolbar(): JSX.Element {
   };
 
   const onPolish = async (): Promise<void> => {
-    setAiError(null);
+    setStatus(null);
     if (mode !== 'wysiwyg') {
-      setAiError('Switch to WYSIWYG mode to use AI polish.');
+      setStatus({ kind: 'error', text: 'Switch to WYSIWYG mode to use AI polish.' });
       return;
     }
     if (!bridge) return;
@@ -61,7 +117,7 @@ function EditorToolbar(): JSX.Element {
         bridge.replaceSelection(result.text);
       }
     } catch (err) {
-      setAiError((err as Error).message);
+      setStatus({ kind: 'error', text: (err as Error).message });
     } finally {
       setAiBusy(false);
     }
@@ -110,16 +166,54 @@ function EditorToolbar(): JSX.Element {
             )}
           </Button>
         )}
-        <Button variant="ghost" size="icon" onClick={onCopyHtml} title="Copy as inlined HTML">
-          <Copy className="h-4 w-4" />
-        </Button>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" title="Export / copy" disabled={exportBusy}>
+              {exportBusy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Share2 className="h-4 w-4" />
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-64">
+            <DropdownMenuLabel>Copy / Export</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onCopyToWeChat}>
+              <Send className="mr-2 h-4 w-4" />
+              <div className="flex flex-col">
+                <span>Copy to WeChat 公众号</span>
+                <span className="text-[10px] text-muted-foreground">
+                  Inline-styled HTML, images embedded
+                </span>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onCopyHtml}>
+              <FileCode2 className="mr-2 h-4 w-4" />
+              <div className="flex flex-col">
+                <span>Copy as inlined HTML</span>
+                <span className="text-[10px] text-muted-foreground">
+                  Generic — for emails, etc.
+                </span>
+              </div>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
         <Button variant="ghost" size="icon" onClick={onSave} title="Save">
           <Download className="h-4 w-4" />
         </Button>
       </div>
-      {aiError && (
-        <div className="border-b border-destructive/30 bg-destructive/10 px-3 py-1 text-xs text-destructive">
-          {aiError}
+      {status && (
+        <div
+          className={
+            status.kind === 'error'
+              ? 'border-b border-destructive/30 bg-destructive/10 px-3 py-1 text-xs text-destructive'
+              : 'border-b border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-600 dark:text-emerald-400'
+          }
+        >
+          {status.text}
         </div>
       )}
     </>
@@ -145,14 +239,4 @@ export function EditorPane(): JSX.Element {
       )}
     </div>
   );
-}
-
-async function renderMarkdownToHtml(md: string): Promise<string> {
-  const { marked } = await import('marked').catch(() => ({ marked: null as unknown }));
-  if (marked && typeof marked === 'function') {
-    return (marked as (src: string) => string)(md);
-  }
-  return `<pre>${md.replace(/[<>&]/g, (c) =>
-    c === '<' ? '&lt;' : c === '>' ? '&gt;' : '&amp;',
-  )}</pre>`;
 }

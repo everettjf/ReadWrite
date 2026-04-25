@@ -26,6 +26,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   aiModel: 'gpt-4o-mini',
   aiSystemPrompt:
     'You are a precise Markdown copy-editor. Improve clarity and flow without changing meaning, code, or links. Return only the revised Markdown — no commentary.',
+
+  wechatExportTheme: 'default',
 };
 
 export function getCurrentSettings(): AppSettings {

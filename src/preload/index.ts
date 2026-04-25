@@ -51,6 +51,8 @@ const api = {
 
   fs: {
     readFile: (path: string): Promise<string> => ipcRenderer.invoke(IPC.FS_READ_FILE, path),
+    readFileBase64: (path: string): Promise<{ base64: string; mime: string }> =>
+      ipcRenderer.invoke(IPC.FS_READ_FILE_BASE64, path),
     writeFile: (path: string, content: string): Promise<void> =>
       ipcRenderer.invoke(IPC.FS_WRITE_FILE, { path, content }),
     openDialog: (opts: {
