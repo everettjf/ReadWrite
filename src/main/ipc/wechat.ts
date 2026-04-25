@@ -47,6 +47,13 @@ interface WechatDraftAddResponse {
   errmsg?: string;
 }
 
+interface WechatFreepublishResponse {
+  errcode?: number;
+  errmsg?: string;
+  publish_id?: string;
+  msg_data_id?: string;
+}
+
 interface TokenCache {
   appId: string;
   token: string;
@@ -257,6 +264,35 @@ export function registerWechatIpc(_ctx: IpcContext): void {
       });
 
       return { draftMediaId, inlineImageCount: images.length };
+    },
+  );
+
+  ipcMain.handle(
+    IPC.WECHAT_FREEPUBLISH,
+    async (_e, opts: { draftMediaId: string }): Promise<{ publishId: string }> => {
+      if (!opts.draftMediaId) {
+        throw new Error('draftMediaId is required to publish.');
+      }
+      const token = await getAccessToken();
+      const url = `https://api.weixin.qq.com/cgi-bin/freepublish/submit?access_token=${encodeURIComponent(token)}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ media_id: opts.draftMediaId }),
+      });
+      const json = (await res.json()) as WechatFreepublishResponse;
+      if (json.errcode && json.errcode !== 0) {
+        throw new Error(
+          `WeChat freepublish failed: errcode=${json.errcode}, errmsg="${json.errmsg ?? 'unknown'}".\n` +
+            "Common causes: account doesn't have publishing permission, or this account type " +
+            "(personal 订阅号) can't use freepublish. Fall back to publishing from " +
+            'mp.weixin.qq.com manually.',
+        );
+      }
+      if (!json.publish_id) {
+        throw new Error('WeChat freepublish returned no publish_id.');
+      }
+      return { publishId: json.publish_id };
     },
   );
 }

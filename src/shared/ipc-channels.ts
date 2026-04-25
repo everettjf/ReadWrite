@@ -71,6 +71,7 @@ export const IPC = {
   // WeChat (scaffold)
   WECHAT_TEST_CREDENTIALS: 'wechat:test-credentials',
   WECHAT_PUBLISH: 'wechat:publish',
+  WECHAT_FREEPUBLISH: 'wechat:freepublish',
 } as const;
 
 export type IPCChannel = (typeof IPC)[keyof typeof IPC];

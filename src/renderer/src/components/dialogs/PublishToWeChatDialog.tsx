@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Send, ExternalLink, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Loader2, Send, ExternalLink, CheckCircle2, AlertCircle, Megaphone } from 'lucide-react';
 import { useEditorStore } from '@/stores/editor';
 import { useSettingsStore } from '@/stores/settings';
 import { buildWeChatHtml } from '@/lib/wechat-html';
@@ -69,6 +69,8 @@ export function PublishToWeChatDialog({ open, onClose }: Props): JSX.Element {
   const [result, setResult] = useState<{ draftMediaId: string; inlineImageCount: number } | null>(
     null,
   );
+  const [publishing, setPublishing] = useState(false);
+  const [publishedId, setPublishedId] = useState<string | null>(null);
 
   const credsConfigured = !!wechatAppId && !!wechatAppSecret;
 
@@ -77,6 +79,8 @@ export function PublishToWeChatDialog({ open, onClose }: Props): JSX.Element {
     if (!open) return;
     setError(null);
     setResult(null);
+    setPublishedId(null);
+    setPublishing(false);
     setTitle(suggestTitle(content));
     setAuthor((prev) => prev); // keep last
     setDigest(suggestDigest(content));
@@ -120,6 +124,29 @@ export function PublishToWeChatDialog({ open, onClose }: Props): JSX.Element {
     }
   };
 
+  const onFreepublish = async (): Promise<void> => {
+    if (!result) return;
+    const ok = confirm(
+      `Push "${title}" to all your followers immediately?\n\n` +
+        'This calls the WeChat /cgi-bin/freepublish/submit endpoint and the article ' +
+        'goes live without a final review in mp.weixin.qq.com.\n\n' +
+        'Note: this only works on accounts with publish permission ' +
+        '(typically 认证服务号 / 认证订阅号). Personal 订阅号 will get a permission ' +
+        'error and should publish from mp.weixin.qq.com instead.',
+    );
+    if (!ok) return;
+    setError(null);
+    setPublishing(true);
+    try {
+      const out = await window.api.wechat.freepublish(result.draftMediaId);
+      setPublishedId(out.publishId);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setPublishing(false);
+    }
+  };
+
   return (
     <Dialog
       open={open}
@@ -153,22 +180,40 @@ export function PublishToWeChatDialog({ open, onClose }: Props): JSX.Element {
             <div className="flex items-start gap-3 rounded border border-emerald-500/40 bg-emerald-500/10 p-4">
               <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500" />
               <div className="space-y-2 text-sm">
-                <div className="font-medium">Draft created.</div>
+                <div className="font-medium">
+                  {publishedId ? 'Published to followers!' : 'Draft created.'}
+                </div>
                 <div className="text-xs text-muted-foreground">
                   Uploaded {result.inlineImageCount} image
-                  {result.inlineImageCount === 1 ? '' : 's'}, plus the cover. Open the WeChat
-                  backend to review and publish.
+                  {result.inlineImageCount === 1 ? '' : 's'}, plus the cover.
+                  {publishedId
+                    ? ' The article is live on your account.'
+                    : ' Review and publish from the WeChat backend, or use the Publish button to push it directly.'}
                 </div>
                 <div className="font-mono text-[10px] text-muted-foreground">
                   draft media_id: {result.draftMediaId}
+                  {publishedId && (
+                    <>
+                      <br />
+                      publish_id: {publishedId}
+                    </>
+                  )}
                 </div>
               </div>
             </div>
+
+            {error && (
+              <div className="rounded border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+                {error}
+              </div>
+            )}
+
             <DialogFooter className="gap-2">
               <Button variant="ghost" onClick={onClose}>
                 Done
               </Button>
               <Button
+                variant="outline"
                 onClick={() =>
                   window.api.shell
                     .openExternal('https://mp.weixin.qq.com/cgi-bin/home')
@@ -177,6 +222,19 @@ export function PublishToWeChatDialog({ open, onClose }: Props): JSX.Element {
               >
                 <ExternalLink className="mr-2 h-4 w-4" /> Open WeChat backend
               </Button>
+              {!publishedId && (
+                <Button onClick={onFreepublish} disabled={publishing}>
+                  {publishing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Publishing…
+                    </>
+                  ) : (
+                    <>
+                      <Megaphone className="mr-2 h-4 w-4" /> Publish to followers
+                    </>
+                  )}
+                </Button>
+              )}
             </DialogFooter>
           </div>
         ) : (

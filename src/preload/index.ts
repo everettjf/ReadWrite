@@ -174,6 +174,8 @@ const api = {
       ipcRenderer.invoke(IPC.WECHAT_TEST_CREDENTIALS),
     publishDraft: (payload: WechatPublishPayload): Promise<WechatPublishResult> =>
       ipcRenderer.invoke(IPC.WECHAT_PUBLISH, payload),
+    freepublish: (draftMediaId: string): Promise<{ publishId: string }> =>
+      ipcRenderer.invoke(IPC.WECHAT_FREEPUBLISH, { draftMediaId }),
   },
 } as const;
 
