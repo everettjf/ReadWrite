@@ -51,6 +51,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Settings → Workspaces panel** lists every known workspace with switch / reveal-in-Finder / forget actions. "Forget" only removes the entry from the known list; the folder on disk is never deleted.
 - **Migration from 0.1.0 settings**: the old `settings.workspaceRoot` field is auto-migrated to the new active-workspace store on first launch of this version, so existing users land back where they left off.
 
+### Added — WeChat publish (create draft)
+
+- **Editor toolbar → Export → Publish draft to WeChat 公众号**. The dialog auto-suggests a title (from the H1) and digest (first paragraph), shows the auto-extracted cover (first image in the article), then in one click: uploads every inline image to WeChat's permanent media endpoint, replaces every `data:` URL with the returned `mmbiz.qpic.cn` URL, uploads the cover separately to get a `thumb_media_id`, and POSTs the article to `/cgi-bin/draft/add`. The user reviews and publishes from mp.weixin.qq.com.
+- Access tokens are cached in the main process (7200s TTL, refreshed transparently). Errors from WeChat (IP whitelist, image too large, etc.) are surfaced verbatim — usually their `errmsg` is the most actionable thing.
+- Articles without any image are rejected with a clear message — WeChat requires `thumb_media_id`, so we need at least one image to use as the cover.
+
 ### Added — Docs sidebar
 
 - **Workspace docs sidebar**, on by default. The split view now has three panes: docs (left, ~18%), reader (middle), editor (right). The sidebar lists every document in the active workspace sorted by last modified, with the currently-open one highlighted. Toggle via the new sidebar icon in the title bar. Width is resizable; the visibility preference persists.

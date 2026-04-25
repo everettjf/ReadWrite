@@ -14,6 +14,8 @@ import type {
   ImageSaveResult,
   KnownWorkspace,
   DocSummary,
+  WechatPublishPayload,
+  WechatPublishResult,
 } from '@shared/types';
 
 interface SuggestedParent {
@@ -170,6 +172,8 @@ const api = {
   wechat: {
     testCredentials: (): Promise<{ ok: boolean; message: string }> =>
       ipcRenderer.invoke(IPC.WECHAT_TEST_CREDENTIALS),
+    publishDraft: (payload: WechatPublishPayload): Promise<WechatPublishResult> =>
+      ipcRenderer.invoke(IPC.WECHAT_PUBLISH, payload),
   },
 } as const;
 

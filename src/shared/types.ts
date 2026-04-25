@@ -116,6 +116,23 @@ export interface DocSummary {
   mtime: number;
 }
 
+export interface WechatPublishPayload {
+  title: string;
+  author?: string;
+  digest?: string;
+  /** Source URL to link to from the article footer (optional). */
+  contentSourceUrl?: string;
+  /** WeChat-ready HTML — must contain at least one `<img src="data:image/...;base64,...">` to use as the cover. */
+  htmlContent: string;
+}
+
+export interface WechatPublishResult {
+  /** Returned by /cgi-bin/draft/add — used to navigate or freepublish/submit later. */
+  draftMediaId: string;
+  /** How many inline images we uploaded. */
+  inlineImageCount: number;
+}
+
 export interface KnownWorkspace {
   /** Absolute path to the workspace folder. */
   path: string;

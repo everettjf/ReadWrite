@@ -21,12 +21,14 @@ import {
   TextSelect,
   ScrollText,
   HelpCircle,
+  Upload,
 } from 'lucide-react';
 import { MilkdownEditor } from './MilkdownEditor';
 import { SourceEditor } from './SourceEditor';
 import { useMilkdownBridge } from '@/lib/milkdown-instance';
 import { buildWeChatHtml, copyHtmlToClipboard } from '@/lib/wechat-html';
 import { AIInterpretDialog, type InsertTarget } from '@/components/dialogs/AIInterpretDialog';
+import { PublishToWeChatDialog } from '@/components/dialogs/PublishToWeChatDialog';
 import { marked } from 'marked';
 import juice from 'juice';
 
@@ -56,6 +58,7 @@ function EditorToolbar(): JSX.Element {
   const [status, setStatus] = useState<ToolbarStatus | null>(null);
   const [interpretOpen, setInterpretOpen] = useState(false);
   const [interpretSelection, setInterpretSelection] = useState('');
+  const [publishOpen, setPublishOpen] = useState(false);
 
   useEffect(() => {
     if (!status || status.kind !== 'info') return;
@@ -279,6 +282,16 @@ function EditorToolbar(): JSX.Element {
                 </span>
               </div>
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setPublishOpen(true)}>
+              <Upload className="mr-2 h-4 w-4" />
+              <div className="flex flex-col">
+                <span>Publish draft to WeChat 公众号</span>
+                <span className="text-[10px] text-muted-foreground">
+                  Uploads images, creates a draft to review
+                </span>
+              </div>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -303,6 +316,8 @@ function EditorToolbar(): JSX.Element {
           onInsert={onInterpretInsert}
         />
       )}
+
+      <PublishToWeChatDialog open={publishOpen} onClose={() => setPublishOpen(false)} />
     </>
   );
 }
