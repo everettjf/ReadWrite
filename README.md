@@ -66,13 +66,31 @@ Requires **Node ≥ 20** and **pnpm ≥ 9**. If you ever see a `NODE_MODULE_VERS
 
 ## Build distributables
 
+For the current host platform:
+
 ```bash
-pnpm dist:mac        # .dmg for macOS (x64 + arm64)
-pnpm dist:win        # NSIS installer
-pnpm dist:linux      # AppImage + .deb
+./deploy.sh                  # typecheck + lint + test + dist for the host
+```
+
+Or invoke `electron-builder` directly:
+
+```bash
+pnpm dist:mac                # .dmg (x64 + arm64) — must run on macOS
+pnpm dist:win                # NSIS installer    — best on Windows (cross-builds need Wine)
+pnpm dist:linux              # AppImage + .deb   — must run on Linux
 ```
 
 Output lands in `release/<version>/`.
+
+### Cross-platform via GitHub Actions
+
+```bash
+./deploy.sh release 0.1.0    # tag v0.1.0, push, trigger CI
+```
+
+The `release.yml` workflow builds .dmg / .exe / .AppImage / .deb on a three-OS matrix and uploads them to a new GitHub Release. Release notes are auto-extracted from the matching `## [0.1.0]` section in `CHANGELOG.md`.
+
+> **Note**: artifacts ship unsigned for v0.1.x. macOS users open with right-click → Open the first time; Windows users see a SmartScreen warning. Real Apple Developer + Authenticode signing is on the roadmap.
 
 ---
 

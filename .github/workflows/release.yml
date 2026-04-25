@@ -1,0 +1,117 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Quality gate
+        run: |
+          pnpm typecheck
+          pnpm test
+
+      - name: Build (macOS)
+        if: matrix.os == 'macos-latest'
+        run: pnpm dist:mac
+        env:
+          # Skip code signing & notarization for v0.1.0 — the .dmg ships
+          # unsigned and users open it once with right-click → Open to bypass
+          # Gatekeeper. Real signing requires DEVELOPER_ID + secrets, which
+          # we'll wire when we cut a "real" release.
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Build (Windows)
+        if: matrix.os == 'windows-latest'
+        run: pnpm dist:win
+        shell: pwsh
+
+      - name: Build (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: pnpm dist:linux
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: readwrite-${{ matrix.os }}
+          path: |
+            release/**/*.dmg
+            release/**/*.exe
+            release/**/*.AppImage
+            release/**/*.deb
+            release/**/*.zip
+            release/**/*.blockmap
+            release/**/latest*.yml
+          if-no-files-found: ignore
+          retention-days: 14
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten artifact tree
+        run: |
+          mkdir -p release-files
+          find artifacts -type f \( -name '*.dmg' -o -name '*.exe' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.zip' -o -name '*.blockmap' -o -name 'latest*.yml' \) -exec cp {} release-files/ \;
+          ls -la release-files
+
+      - name: Extract release notes from CHANGELOG
+        id: notes
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          {
+            echo "notes<<EOF"
+            awk -v ver="$version" '
+              $0 ~ "^## \\[" ver "\\]" { found=1; next }
+              found && /^## \[/ { exit }
+              found { print }
+            ' CHANGELOG.md
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ReadWrite ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          body: ${{ steps.notes.outputs.notes }}
+          files: release-files/*
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
