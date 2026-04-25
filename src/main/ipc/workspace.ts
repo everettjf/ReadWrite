@@ -317,6 +317,29 @@ export function registerWorkspaceIpc(_ctx: IpcContext): void {
     await shell.trashItem(folder);
   });
 
+  // Per-workspace "last opened document" memory. The map is stored under a
+  // single kv key as { [workspacePath]: docPath } so we can fetch all of it
+  // cheaply on app boot.
+
+  ipcMain.handle(IPC.LAST_DOC_GET, (_e, workspacePath: string): string | null => {
+    const map = kvGet<Record<string, string>>('lastDocs') ?? {};
+    const v = map[workspacePath];
+    return typeof v === 'string' ? v : null;
+  });
+
+  ipcMain.handle(
+    IPC.LAST_DOC_SET,
+    (_e, opts: { workspace: string; docPath: string | null }): void => {
+      const map = kvGet<Record<string, string>>('lastDocs') ?? {};
+      if (opts.docPath) {
+        map[opts.workspace] = opts.docPath;
+      } else {
+        delete map[opts.workspace];
+      }
+      kvSet('lastDocs', map);
+    },
+  );
+
   ipcMain.handle(
     IPC.FS_PATH_EXISTS,
     async (_e, path: string): Promise<boolean> => pathExists(path),

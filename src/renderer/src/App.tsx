@@ -54,17 +54,57 @@ export function App(): JSX.Element {
   }, [loadSettings, loadWorkspace]);
 
   // When the active workspace changes (e.g. switch from the title bar dropdown),
-  // reset the editor so the next user action creates a doc inside the new one.
+  // try to restore the last document opened in that workspace; otherwise reset
+  // to the welcome content so the next user action creates a doc inside the
+  // new workspace.
   useEffect(() => {
     if (!activeWorkspace) return;
+    let cancelled = false;
     const editor = useEditorStore.getState();
-    // If the current doc lives outside the new active workspace, clear it.
-    if (editor.path && !editor.path.startsWith(`${activeWorkspace}/`)) {
-      editor.setPath(null);
-      editor.setContent(WELCOME_CONTENT, { markDirty: false });
-    } else if (!editor.path) {
-      editor.setContent(WELCOME_CONTENT, { markDirty: false });
-    }
+
+    const tryRestore = async (): Promise<void> => {
+      const remembered = await window.api.workspace.getLastDoc(activeWorkspace).catch(() => null);
+      if (cancelled) return;
+
+      if (
+        remembered &&
+        remembered.startsWith(`${activeWorkspace}/`) &&
+        (await window.api.fs.pathExists(remembered).catch(() => false))
+      ) {
+        try {
+          const opened = await openMarkdownAtPath(remembered);
+          if (cancelled) return;
+          editor.setPath(opened.path);
+          editor.setContent(opened.content, { markDirty: false });
+          return;
+        } catch (err) {
+          console.warn('[restore] failed to open last doc:', err);
+        }
+      }
+
+      // Fallback: clear stale doc / show welcome.
+      if (editor.path && !editor.path.startsWith(`${activeWorkspace}/`)) {
+        editor.setPath(null);
+        editor.setContent(WELCOME_CONTENT, { markDirty: false });
+      } else if (!editor.path) {
+        editor.setContent(WELCOME_CONTENT, { markDirty: false });
+      }
+    };
+
+    tryRestore();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeWorkspace]);
+
+  // Persist the active doc path per workspace so it can be restored on next launch.
+  useEffect(() => {
+    if (!activeWorkspace) return;
+    const unsub = useEditorStore.subscribe((state, prev) => {
+      if (state.path === prev.path) return;
+      window.api.workspace.setLastDoc(activeWorkspace, state.path).catch(() => null);
+    });
+    return unsub;
   }, [activeWorkspace]);
 
   // Auto-refresh the docs list when the workspace folder changes on disk

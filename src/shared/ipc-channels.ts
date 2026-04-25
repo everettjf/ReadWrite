@@ -61,6 +61,8 @@ export const IPC = {
   DOC_RENAME: 'doc:rename',
   DOC_REVEAL_IN_FINDER: 'doc:reveal-in-finder',
   DOC_TRASH: 'doc:trash',
+  LAST_DOC_GET: 'last-doc:get',
+  LAST_DOC_SET: 'last-doc:set',
   FS_PATH_EXISTS: 'fs:path-exists',
 
   // AI

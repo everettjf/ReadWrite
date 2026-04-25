@@ -156,6 +156,10 @@ const api = {
     revealInFinder: (path: string): Promise<void> =>
       ipcRenderer.invoke(IPC.DOC_REVEAL_IN_FINDER, path),
     trashDoc: (mdPath: string): Promise<void> => ipcRenderer.invoke(IPC.DOC_TRASH, mdPath),
+    getLastDoc: (workspacePath: string): Promise<string | null> =>
+      ipcRenderer.invoke(IPC.LAST_DOC_GET, workspacePath),
+    setLastDoc: (workspace: string, docPath: string | null): Promise<void> =>
+      ipcRenderer.invoke(IPC.LAST_DOC_SET, { workspace, docPath }),
   },
 
   ai: {
