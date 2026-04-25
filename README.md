@@ -1,135 +1,92 @@
-# ReadWrite
+<div align="center">
+  <img src="build/icon.png" alt="ReadWrite" width="128" height="128" />
+  <h1>ReadWrite</h1>
+  <p><em>Read anything. Write anywhere.</em></p>
+  <p>
+    <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+    <img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey">
+    <img alt="Status" src="https://img.shields.io/badge/status-pre--alpha-orange">
+    <a href="https://github.com/everettjf/ReadWrite/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/everettjf/ReadWrite/actions/workflows/ci.yml/badge.svg"></a>
+  </p>
+</div>
 
-> _Read anything. Write anywhere._
-
-A cross-platform desktop app that puts a **reader** and a **Markdown editor** side-by-side, so the gap between consuming and producing knowledge collapses to one window.
-
-<p align="center">
-  <img src="build/icon.png" alt="ReadWrite" width="180" height="180" />
-</p>
-
-- **Left pane:** multi-tab reader for the web, GitHub, PDFs, EPUBs, and local code folders.
-- **Right pane:** a Milkdown-powered WYSIWYG Markdown editor with a first-class source mode (CodeMirror 6).
-- **Workflow glue:** one-tap capture the reader view, auto-insert as an image into the editor.
-
-Built with Electron + TypeScript + React + Tailwind + shadcn/ui. Licensed under the MIT License.
+ReadWrite is a cross-platform desktop app that puts a **reader** and a **Markdown editor** side-by-side. Read a paper, GitHub repo, PDF, or EPUB on the left; write notes — with a working WYSIWYG editor, screenshot-to-clipboard, AI polish, and one-click export to your blog or 微信公众号 — on the right. No tab-switching, no Cmd+V dance.
 
 ---
 
-## Status
+## What it does
 
-Pre-alpha (`0.1.0`). The structure, builds, and primary flows are in place; polish, offline docs, and release automation are ongoing.
+**Read** — multi-tab reader for the left pane:
 
-Platforms: macOS, Windows, Linux.
+- Any URL or GitHub repo (`owner/repo` shorthand) via Electron's `WebContentsView` — so cookies, CSP, and sites that set `X-Frame-Options` (which is _everyone_ logged-in) just work, unlike iframes.
+- PDF via `pdfjs-dist` with page nav and zoom.
+- EPUB via `epubjs` + `react-reader`, with location persisted per tab.
+- Local code folder via Monaco (read-only) + a `chokidar`-driven file tree that hot-refreshes on disk changes.
 
----
+**Write** — Milkdown editor on the right:
 
-## Features
+- WYSIWYG mode (Milkdown 7.x, GFM, history, slash commands) with a one-click toggle to a full **CodeMirror 6 source mode** that shares the same buffer.
+- Live editor font / family / max-width controlled by CSS variables driven from settings.
+- Pasting any image (from anywhere — system clipboard, snip tool, drag-drop) auto-saves it to `images/` next to the markdown file and inserts a relative-path link.
 
-| Pane          | What you can do                                                                                 |
-| ------------- | ----------------------------------------------------------------------------------------------- |
-| Reader (web)  | Open any URL; GitHub shorthand (`owner/repo`); real Chromium via `WebContentsView` (no iframe). |
-| Reader (PDF)  | Page-by-page rendering via `pdfjs-dist`, zoom, jump-to-page.                                    |
-| Reader (EPUB) | Paginated reading via `epubjs` + `react-reader`, location persisted per tab.                    |
-| Reader (code) | File tree + Monaco (read-only) for local folders; hot refresh via `chokidar`.                   |
-| Editor        | Milkdown WYSIWYG with GFM; one-click toggle to full CodeMirror 6 source mode.                   |
-| Screenshot    | Camera button on each reader toolbar → PNG saved + inlined as Markdown image.                   |
-| Tabs          | URL/Folder/PDF/EPUB can coexist; sidebars and tab state persist across runs.                    |
-| Themes        | Light / dark / system, controlled from the title bar cog menu.                                  |
+**Capture** — get content from reader to editor in one motion:
+
+- **Full-pane screenshot** — camera button on each reader toolbar grabs the whole tab.
+- **Region snip** — title-bar ✂️ button (or `⇧⌘S` / `Ctrl+Shift+S`). Freezes the reader pane, lets you drag a rectangle, copies the cropped PNG to the clipboard _and_ saves it to disk. For web tabs the native `WebContentsView` is briefly hidden so a renderer-side overlay can be drawn — see [docs/adr/001-electron-vs-tauri.md](docs/adr/001-electron-vs-tauri.md) for why this matters.
+
+**AI**:
+
+- Configurable OpenAI-compatible endpoint (works with OpenAI, DeepSeek, Moonshot, Azure OpenAI, local Ollama, …).
+- ✨ Polish action in the editor: with a selection, polishes the selection in place; without, polishes the whole doc.
+- Connection test in Settings → AI verifies endpoint + key + model with a real chat-completions call.
+- API key stays in the main process; renderer never sees the network request.
+
+**Publish**:
+
+- **Copy to WeChat 公众号** in the editor toolbar. Renders the document with per-element inline `style="..."` attributes (no `<style>` tag — WeChat strips them) and base64-embeds local images. Three themes ship: Default (sans, comfortable), Serif (long-form), Compact. Approach modeled on [Spute/obsidian-copy-to-mp](https://github.com/Spute/obsidian-copy-to-mp).
+- **Copy as inlined HTML** for generic targets like email or Notion.
+
+**Settings**:
+
+- Standalone settings window (separate `BrowserWindow`) with sidebar panels: General · Editor · Images · AI · WeChat · About.
+- Cross-window sync — change a value here and the main window updates live.
 
 ---
 
 ## Quick start
 
-### Prerequisites
-
-- Node.js ≥ 20
-- pnpm ≥ 9 (`npm i -g pnpm`)
-- Platform-native build tools for `better-sqlite3`:
-  - macOS: Xcode command-line tools (`xcode-select --install`)
-  - Linux: `build-essential`
-  - Windows: the Visual Studio C++ build tools
-
-### Develop
-
 ```bash
-pnpm install          # installs deps + auto-runs electron-builder install-app-deps
-                      # (rebuilds better-sqlite3 against Electron's Node ABI)
-pnpm dev              # electron-vite dev: main + preload + renderer with HMR
+git clone https://github.com/everettjf/ReadWrite.git
+cd ReadWrite
+pnpm install         # auto-rebuilds better-sqlite3 against Electron's Node ABI
+pnpm dev             # main + preload + renderer with HMR
 ```
 
-The app hot-reloads the renderer on every save, and rebuilds the main / preload on changes.
+Requires **Node ≥ 20** and **pnpm ≥ 9**. If you ever see a `NODE_MODULE_VERSION` mismatch, run `pnpm run rebuild:native` (note the explicit `run` — `pnpm rebuild` is a different built-in command and won't fix it).
 
-If you ever see `NODE_MODULE_VERSION` mismatches at startup (system Node and Electron's Node ABI drifted apart), force a rebuild:
-
-```bash
-pnpm run rebuild:native
-```
-
-Don't run `pnpm rebuild` — that's pnpm's built-in command which uses system Node and won't fix the issue. Always use `pnpm run rebuild:native` (with explicit `run`).
-
-### Build (production bundle only)
+## Build distributables
 
 ```bash
-pnpm build            # outputs to out/
-pnpm preview          # runs the built app
-```
-
-### Package (distributable installers)
-
-```bash
-pnpm dist:mac         # .dmg for macOS (x64 + arm64)
-pnpm dist:win         # NSIS installer for Windows
-pnpm dist:linux       # AppImage + .deb
-pnpm dist             # current host platform
+pnpm dist:mac        # .dmg for macOS (x64 + arm64)
+pnpm dist:win        # NSIS installer
+pnpm dist:linux      # AppImage + .deb
 ```
 
 Output lands in `release/<version>/`.
 
-### Testing & quality gates
-
-```bash
-pnpm typecheck        # strict TypeScript check for main+preload+renderer
-pnpm lint             # ESLint (strict, no warnings tolerated)
-pnpm test             # Vitest (shared types + renderer lib helpers)
-pnpm format           # Prettier write
-```
-
-Husky enforces ESLint+Prettier on staged files and commitlint (Conventional Commits) on messages.
-
 ---
 
-## Architecture
+## Architecture (in one minute)
 
-### Process layout
+| Process  | Responsibility                                                                                                |
+| -------- | ------------------------------------------------------------------------------------------------------------- |
+| Main     | Window lifecycle, `WebContentsView` tab manager, IPC, SQLite persistence, file watchers, AI and WeChat fetch. |
+| Preload  | Typed `contextBridge` exposing `window.api.*` to the renderer.                                                |
+| Renderer | React 18 + Tailwind + shadcn/ui. Reader pane (4 tab kinds), Milkdown / CodeMirror editor, Settings window.    |
 
-| Process  | Responsibility                                                                         |
-| -------- | -------------------------------------------------------------------------------------- |
-| Main     | Window lifecycle, `WebContentsView`-backed tabs, filesystem IO, SQLite, file watchers. |
-| Preload  | Thin `contextBridge` surface exposing an `electron` + `api` namespace to the renderer. |
-| Renderer | React 18 UI: split view, reader pane with four tab kinds, Milkdown editor pane.        |
+The non-obvious load-bearing decisions — **Electron over Tauri**, **`WebContentsView` over iframe / `<webview>`**, **screenshot via capture-then-overlay**, **per-element inline styles for the WeChat exporter** — all live in [docs/adr/001-electron-vs-tauri.md](docs/adr/001-electron-vs-tauri.md). Read it before opening a "why don't we just use \_\_\_" issue.
 
-All IPC channels are declared in [`src/shared/ipc-channels.ts`](src/shared/ipc-channels.ts); shared domain types live in [`src/shared/types.ts`](src/shared/types.ts). The preload surface is typed, so `window.api.*` calls are strongly typed end-to-end.
-
-### Why `WebContentsView` and not `<webview>` / `<iframe>`?
-
-- `<iframe>` can't load anything that sets `X-Frame-Options: DENY|SAMEORIGIN` (e.g. GitHub, most logged-in sites).
-- `<webview>` is [deprecated](https://www.electronjs.org/docs/latest/api/webview-tag#warning) and brittle.
-- `WebContentsView` (successor to `BrowserView`) is a first-class native child window that sits _on top_ of the renderer window.
-
-Positioning is handled on the renderer side: each `WebReader` component reports its host div's bounding rect to the main process, which updates the view's bounds every animation frame. See [`src/renderer/src/components/reader/WebReader.tsx`](src/renderer/src/components/reader/WebReader.tsx) and [`src/main/tabs.ts`](src/main/tabs.ts).
-
-### Screenshots
-
-- **Web/GitHub tabs:** captured in main (`WebContents.capturePage()`) because the native view lives outside the renderer DOM.
-- **PDF / EPUB / Code tabs:** captured in renderer with `html-to-image`, since the content lives in normal DOM.
-
-Both paths converge on the same "insert image at cursor in Milkdown" helper.
-
-### Persistence
-
-- `better-sqlite3` in `app.getPath('userData')/readwrite.sqlite` stores app settings, recent sources, and the last session.
-- Editor content is explicit-save (no autosave by default) — unsaved changes are guarded with a `beforeunload` prompt.
+IPC channels are declared once in [`src/shared/ipc-channels.ts`](src/shared/ipc-channels.ts); the preload surface is fully typed so `window.api.foo()` calls are end-to-end strongly typed.
 
 ---
 
@@ -137,32 +94,73 @@ Both paths converge on the same "insert image at cursor in Milkdown" helper.
 
 ```
 src/
-├── main/                     # Electron main process
-│   ├── index.ts              # entry / lifecycle
-│   ├── window.ts             # BrowserWindow
-│   ├── tabs.ts               # WebContentsView tab manager
-│   ├── db/                   # better-sqlite3
-│   ├── ipc/                  # IPC handlers (reader / fs / screenshot / settings)
-│   └── watchers/             # chokidar file watcher hub
-├── preload/
-│   └── index.ts              # contextBridge API surface
+├── main/                       # Electron main process
+│   ├── index.ts                # entry / lifecycle
+│   ├── window.ts               # main + settings BrowserWindow factories
+│   ├── tabs.ts                 # WebContentsView tab manager
+│   ├── db/                     # better-sqlite3 (kv_store, recent_docs)
+│   ├── ipc/                    # reader / fs / screenshot / settings / ai / wechat handlers
+│   └── watchers/               # chokidar file watcher hub
+├── preload/index.ts            # contextBridge api surface
 ├── renderer/
 │   ├── index.html
 │   └── src/
-│       ├── App.tsx
-│       ├── components/       # layout / reader / editor / ui (shadcn)
-│       ├── stores/           # zustand: tabs / editor / settings
-│       ├── lib/              # utils, ipc helpers, screenshot bridge
-│       └── index.css         # Tailwind + shadcn tokens
-└── shared/                   # types + IPC channel names shared across processes
+│       ├── App.tsx             # main window root
+│       ├── SettingsApp.tsx     # settings window root (loaded at #/settings)
+│       ├── components/
+│       │   ├── layout/         # SplitView, TitleBar
+│       │   ├── reader/         # WebReader, PdfReader, EpubReaderView, CodeReader, TabBar
+│       │   ├── editor/         # MilkdownEditor, SourceEditor, EditorPane
+│       │   ├── settings/       # General/Editor/Images/AI/WeChat/About panels
+│       │   ├── snip/           # full-window region-snip overlay
+│       │   └── ui/             # shadcn primitives (button, dialog, select, switch, …)
+│       ├── stores/             # zustand: tabs, editor, settings
+│       └── lib/                # utils, ipc, screenshot, snip, wechat-html, wechat-themes
+└── shared/                     # types + IPC channel names shared across processes
 ```
 
 ---
 
-## Documentation
+## Tech stack
 
-- [ADR-001: Electron over Tauri](docs/adr/001-electron-vs-tauri.md)
-- [Contributing](CONTRIBUTING.md)
+- **Shell**: Electron 33+, electron-vite, electron-builder
+- **UI**: React 18, Tailwind 3, shadcn/ui (Radix primitives), lucide-react, react-resizable-panels
+- **Editor**: Milkdown 7.x (commonmark, gfm, history, listener, clipboard, upload), CodeMirror 6
+- **Reader**: pdfjs-dist, epubjs + react-reader, Monaco, Electron WebContentsView
+- **Data**: better-sqlite3 (settings, sessions, recents), chokidar (file watching), Zustand (state), TanStack Query
+- **Tooling**: TypeScript strict, ESLint, Prettier, Husky, lint-staged, commitlint (Conventional Commits), Vitest
+
+---
+
+## Roadmap
+
+Tracked in [CHANGELOG.md](CHANGELOG.md). Short-term items I'm working on:
+
+- [ ] Direct publish to WeChat 公众号 drafts (credentials are wired, the upload + create-draft flow is the missing piece).
+- [ ] More AI actions: continue, translate, summarize-into-frontmatter, slash commands.
+- [ ] Snip rectangle: drag handles for post-release adjustment.
+- [ ] Tab session restore across launches.
+- [ ] API keys behind `keytar` instead of plaintext SQLite.
+
+---
+
+## Contributing
+
+PRs welcome. The basics:
+
+- Branch off `main`. Use [Conventional Commits](https://www.conventionalcommits.org/).
+- `pnpm typecheck && pnpm lint && pnpm test && pnpm build` must all pass; CI runs them on every PR.
+- For non-trivial changes, open an issue first so we can agree on direction.
+
+Full guide: [CONTRIBUTING.md](CONTRIBUTING.md).
+
+---
+
+## Acknowledgements
+
+- The "Copy to WeChat 公众号" pipeline — particularly the per-element inline-styles approach and the `<li>`-children-wrapped-in-`<p>` quirk — was directly modeled on [Spute/obsidian-copy-to-mp](https://github.com/Spute/obsidian-copy-to-mp). Different runtime, same set of WeChat-editor pain points.
+- [Milkdown](https://milkdown.dev/) for the WYSIWYG core, [CodeMirror](https://codemirror.net/) for the source mode, [pdfjs-dist](https://github.com/mozilla/pdf.js) for PDFs, [epubjs](https://github.com/futurepress/epub.js) for EPUBs.
+- [shadcn/ui](https://ui.shadcn.com/) and [Radix UI](https://www.radix-ui.com/) for accessible primitives that don't need a 200KB component library to look good.
 
 ---
 
