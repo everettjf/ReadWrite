@@ -1,10 +1,25 @@
 import { BrowserWindow, nativeTheme } from 'electron';
+import { kvGet } from './db';
+import type { AppSettings } from '@shared/types';
 
 interface MainWindowOptions {
   preloadPath: string;
   devUrl?: string;
   indexHtml: string;
   isDev: boolean;
+}
+
+/**
+ * Resolve the user's chosen theme synchronously so we can hand the right
+ * background colour to a new BrowserWindow before the renderer mounts.
+ * Without this, opening the Settings window flashes white-on-dark for a
+ * frame or two while the React app's dark-mode class kicks in.
+ */
+function resolveBackgroundColor(): string {
+  const stored = kvGet<Partial<AppSettings>>('settings');
+  const theme = stored?.theme ?? 'system';
+  const isDark = theme === 'dark' || (theme === 'system' && nativeTheme.shouldUseDarkColors);
+  return isDark ? '#0a0a0a' : '#ffffff';
 }
 
 export function createMainWindow(opts: MainWindowOptions): BrowserWindow {
@@ -17,7 +32,7 @@ export function createMainWindow(opts: MainWindowOptions): BrowserWindow {
     autoHideMenuBar: process.platform !== 'darwin',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     trafficLightPosition: { x: 12, y: 12 },
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#0a0a0a' : '#ffffff',
+    backgroundColor: resolveBackgroundColor(),
     webPreferences: {
       preload: opts.preloadPath,
       sandbox: false,
@@ -79,7 +94,7 @@ export function openSettingsWindow(opts: SettingsWindowOptions): BrowserWindow {
     title: 'ReadWrite Settings',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     trafficLightPosition: { x: 12, y: 12 },
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#0a0a0a' : '#ffffff',
+    backgroundColor: resolveBackgroundColor(),
     webPreferences: {
       preload: opts.preloadPath,
       sandbox: false,

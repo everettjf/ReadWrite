@@ -50,6 +50,14 @@ function applyTheme(theme: AppSettings['theme']): void {
     theme === 'dark' ||
     (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   root.classList.toggle('dark', dark);
+  // Cache the resolved value so the next time the user opens this window
+  // (or the Settings window) the inline boot script in index.html picks
+  // the right colour scheme without waiting for the IPC round-trip.
+  try {
+    localStorage.setItem('rw-theme-resolved', dark ? 'dark' : 'light');
+  } catch {
+    // localStorage may be unavailable; not fatal.
+  }
 }
 
 function applyEditorVars(s: AppSettings): void {
