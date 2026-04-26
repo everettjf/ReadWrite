@@ -109,26 +109,6 @@ export function TitleBar({ onNewDoc, onOpenDoc }: TitleBarProps): JSX.Element {
           className="flex items-center gap-2 overflow-hidden"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => updateSettings({ sidebarVisible: !sidebarVisible })}
-              >
-                {sidebarVisible ? (
-                  <PanelRightClose className="h-4 w-4" />
-                ) : (
-                  <PanelRightOpen className="h-4 w-4" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {sidebarVisible ? 'Hide docs sidebar' : 'Show docs sidebar'}
-            </TooltipContent>
-          </Tooltip>
-
           <DropdownMenu open={open} onOpenChange={setOpen}>
             <DropdownMenuTrigger asChild>
               <button
@@ -231,6 +211,25 @@ export function TitleBar({ onNewDoc, onOpenDoc }: TitleBarProps): JSX.Element {
               </Button>
             </TooltipTrigger>
             <TooltipContent>Settings</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => updateSettings({ sidebarVisible: !sidebarVisible })}
+              >
+                {sidebarVisible ? (
+                  <PanelRightClose className="h-4 w-4" />
+                ) : (
+                  <PanelRightOpen className="h-4 w-4" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {sidebarVisible ? 'Hide docs sidebar' : 'Show docs sidebar'}
+            </TooltipContent>
           </Tooltip>
         </div>
       </div>
