@@ -1,9 +1,20 @@
+import { useState } from 'react';
 import { useTabsStore } from '@/stores/tabs';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Globe, FileText, Book, Code2 } from 'lucide-react';
 import { TabBar } from './TabBar';
 import { WebReader } from './WebReader';
 import { PdfReader } from './PdfReader';
 import { EpubReaderView } from './EpubReader';
 import { CodeReader } from './CodeReader';
+import {
+  openWebOrGithubTab,
+  openPdfFromDialog,
+  openEpubFromDialog,
+  openCodeFolderFromDialog,
+} from '@/lib/open-tab';
+import { toGithubWebUrl } from '@/lib/utils';
 
 export function ReaderPane(): JSX.Element {
   const { tabs, activeTabId } = useTabsStore();
@@ -48,14 +59,48 @@ export function ReaderPane(): JSX.Element {
 }
 
 function EmptyState(): JSX.Element {
+  const [input, setInput] = useState('');
+  const canOpenUrl = !!toGithubWebUrl(input);
+
+  const handleWeb = async (): Promise<void> => {
+    if (await openWebOrGithubTab(input)) setInput('');
+  };
+
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-muted-foreground">
-      <div className="text-sm">
-        Open a URL, PDF, EPUB or a local folder from the <span className="font-mono">+</span> button
-        above.
-      </div>
-      <div className="text-xs opacity-75">
-        Tip: type <span className="font-mono">owner/repo</span> to open a GitHub repository.
+    <div className="flex h-full items-center justify-center px-6">
+      <div className="w-full max-w-md space-y-5">
+        <div className="space-y-1 text-center text-muted-foreground">
+          <div className="text-sm">Open a URL, GitHub repo, PDF, EPUB, or local code folder.</div>
+          <div className="text-xs opacity-75">
+            Tip: type <span className="font-mono">owner/repo</span> for a GitHub repository.
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <Input
+            placeholder="https://... or github-owner/repo"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleWeb();
+            }}
+          />
+          <Button onClick={handleWeb} disabled={!canOpenUrl}>
+            <Globe className="mr-2 h-4 w-4" /> Open
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2">
+          <Button variant="outline" onClick={() => openPdfFromDialog()}>
+            <FileText className="mr-2 h-4 w-4" /> PDF
+          </Button>
+          <Button variant="outline" onClick={() => openEpubFromDialog()}>
+            <Book className="mr-2 h-4 w-4" /> EPUB
+          </Button>
+          <Button variant="outline" onClick={() => openCodeFolderFromDialog()}>
+            <Code2 className="mr-2 h-4 w-4" /> Code
+          </Button>
+        </div>
       </div>
     </div>
   );

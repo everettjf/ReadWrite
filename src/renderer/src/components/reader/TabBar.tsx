@@ -12,7 +12,13 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Plus, X, Globe, FileText, Book, Code2, Github } from 'lucide-react';
-import { cn, toGithubWebUrl, basename } from '@/lib/utils';
+import { cn, toGithubWebUrl } from '@/lib/utils';
+import {
+  openWebOrGithubTab,
+  openPdfFromDialog,
+  openEpubFromDialog,
+  openCodeFolderFromDialog,
+} from '@/lib/open-tab';
 import type { Tab } from '@shared/types';
 
 const ICONS: Record<Tab['kind'], React.ComponentType<{ className?: string }>> = {
@@ -76,52 +82,21 @@ export function TabBar(): JSX.Element {
 function NewTabButton(): JSX.Element {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
-  const { makeLocalTab, addTab } = useTabsStore();
 
-  const createWebOrGithub = async (): Promise<void> => {
-    const asGithub = toGithubWebUrl(input);
-    if (!asGithub) return;
-    const kind: 'web' | 'github' = /github\.com/i.test(asGithub) ? 'github' : 'web';
-    const tab = await window.api.tabs.create({ url: asGithub, kind });
-    addTab({ ...(tab as Tab), kind } as Tab);
-    setOpen(false);
-    setInput('');
+  const handleWeb = async (): Promise<void> => {
+    if (await openWebOrGithubTab(input)) {
+      setOpen(false);
+      setInput('');
+    }
   };
-
-  const openPdf = async (): Promise<void> => {
-    const paths = await window.api.fs.openDialog({
-      title: 'Open PDF',
-      filters: [{ name: 'PDF', extensions: ['pdf'] }],
-    });
-    if (!paths || paths.length === 0) return;
-    const path = paths[0]!;
-    const tab = makeLocalTab('pdf', { title: basename(path), path });
-    addTab(tab);
-    setOpen(false);
+  const handlePdf = async (): Promise<void> => {
+    if (await openPdfFromDialog()) setOpen(false);
   };
-
-  const openEpub = async (): Promise<void> => {
-    const paths = await window.api.fs.openDialog({
-      title: 'Open EPUB',
-      filters: [{ name: 'EPUB', extensions: ['epub'] }],
-    });
-    if (!paths || paths.length === 0) return;
-    const path = paths[0]!;
-    const tab = makeLocalTab('epub', { title: basename(path), path });
-    addTab(tab);
-    setOpen(false);
+  const handleEpub = async (): Promise<void> => {
+    if (await openEpubFromDialog()) setOpen(false);
   };
-
-  const openFolder = async (): Promise<void> => {
-    const folders = await window.api.fs.openDialog({
-      directory: true,
-      title: 'Open code folder',
-    });
-    if (!folders || folders.length === 0) return;
-    const rootPath = folders[0]!;
-    const tab = makeLocalTab('code', { title: basename(rootPath), rootPath });
-    addTab(tab);
-    setOpen(false);
+  const handleFolder = async (): Promise<void> => {
+    if (await openCodeFolderFromDialog()) setOpen(false);
   };
 
   return (
@@ -145,20 +120,20 @@ function NewTabButton(): JSX.Element {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') createWebOrGithub();
+              if (e.key === 'Enter') handleWeb();
             }}
           />
           <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" onClick={openPdf}>
+            <Button variant="outline" onClick={handlePdf}>
               <FileText className="mr-2 h-4 w-4" /> PDF
             </Button>
-            <Button variant="outline" onClick={openEpub}>
+            <Button variant="outline" onClick={handleEpub}>
               <Book className="mr-2 h-4 w-4" /> EPUB
             </Button>
-            <Button variant="outline" onClick={openFolder}>
+            <Button variant="outline" onClick={handleFolder}>
               <Code2 className="mr-2 h-4 w-4" /> Code folder
             </Button>
-            <Button onClick={createWebOrGithub} disabled={!toGithubWebUrl(input)}>
+            <Button onClick={handleWeb} disabled={!toGithubWebUrl(input)}>
               <Globe className="mr-2 h-4 w-4" /> Open URL
             </Button>
           </div>
