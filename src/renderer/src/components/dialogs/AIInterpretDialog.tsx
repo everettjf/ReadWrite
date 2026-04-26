@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Sparkles } from 'lucide-react';
+import { useNativeViewMute } from '@/lib/native-view-mute';
 
 interface AIInterpretDialogProps {
   open: boolean;
@@ -46,6 +47,7 @@ export function AIInterpretDialog({
   const [response, setResponse] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useNativeViewMute(open);
 
   useEffect(() => {
     if (open) {

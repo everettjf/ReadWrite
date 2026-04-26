@@ -1,4 +1,4 @@
-import { rewriteFileUrlsToRelative, rewriteRelativeToFileUrls } from './path-transform';
+import { rewriteFileUrlsToRelative } from './path-transform';
 
 export interface OpenedDoc {
   path: string;
@@ -20,7 +20,12 @@ export async function openMarkdownFromDialog(): Promise<OpenedDoc | null> {
 
 export async function openMarkdownAtPath(path: string): Promise<OpenedDoc> {
   const raw = await window.api.fs.readFile(path);
-  const content = rewriteRelativeToFileUrls(raw, path);
+  // The markdown's image refs should already be relative paths after a
+  // save round-trip — Milkdown's relativeImagePlugin renders them by
+  // resolving against the doc folder. As a safety net for legacy docs
+  // that may have leaked `file://` URLs onto disk, normalize them back
+  // to relative on load.
+  const content = rewriteFileUrlsToRelative(raw, path);
   return { path, content };
 }
 

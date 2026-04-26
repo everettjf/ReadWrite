@@ -70,12 +70,15 @@ export async function finalizeSnip(
     console.warn('[snip] clipboard write failed:', err);
   });
 
-  // Auto-insert into editor when requested. We use the absolute file:// URL
-  // here — the path-transform layer rewrites that to a relative ref on save.
-  if (options.autoInsertIntoEditor && savedPath) {
+  // Auto-insert into editor when requested. We prefer the relative path so
+  // the markdown source stays clean and portable; the Milkdown image node
+  // view resolves it back to file:// for live rendering. Falls back to
+  // file:// only when the doc isn't anchored under the workspace yet.
+  if (options.autoInsertIntoEditor && (relativePath || savedPath)) {
     const editor = useEditorStore.getState();
-    const src = pathToFileUrl(savedPath);
-    const snippet = `\n![${relativePath ?? 'screenshot'}](${src})\n`;
+    const src = relativePath ?? pathToFileUrl(savedPath!);
+    const altText = relativePath ? relativePath.split('/').pop()! : 'screenshot';
+    const snippet = `\n![${altText}](${src})\n`;
     editor.setContent(editor.content + snippet, { markDirty: true });
   }
 

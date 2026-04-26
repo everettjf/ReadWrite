@@ -10,6 +10,7 @@ import { Slice } from '@milkdown/prose/model';
 import type { Node as ProseNode } from '@milkdown/prose/model';
 import { useEditorStore } from '@/stores/editor';
 import { MilkdownBridgeContext, type MilkdownBridge } from '@/lib/milkdown-instance';
+import { relativeImagePlugin } from './relative-image-plugin';
 
 /** Saves a pasted/dropped image File to the configured images dir and returns a Markdown-friendly src. */
 async function saveImageFile(file: File): Promise<{ src: string; alt: string }> {
@@ -27,6 +28,8 @@ async function saveImageFile(file: File): Promise<{ src: string; alt: string }> 
     mime: file.type || 'image/png',
     suggestedName: (file.name || 'pasted-image').replace(/\.[^./\\]+$/, ''),
   });
+  // Prefer the relative path (renders cleanly in source mode + portable on disk).
+  // Fall back to absolute file:// only when the doc isn't yet anchored to a workspace folder.
   const src = result.relativePath ?? `file://${encodeURI(result.savedPath)}`;
   return { src, alt: file.name || 'image' };
 }
@@ -83,6 +86,7 @@ export function MilkdownEditor({ children }: { children?: React.ReactNode }): JS
         .use(listener)
         .use(clipboard)
         .use(upload)
+        .use(relativeImagePlugin)
         .create();
 
       if (cancelled) {

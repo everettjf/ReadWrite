@@ -24,6 +24,7 @@ import {
   docBasename,
   docFolder,
 } from './lib/doc-io';
+import { rewriteFileUrlsToRelative } from './lib/path-transform';
 import type { PaneSnapshot } from './lib/snip';
 
 const WELCOME_CONTENT = `# Welcome to ReadWrite
@@ -210,6 +211,16 @@ export function App(): JSX.Element {
             await saveMarkdown(snap.content, path);
           }
           useEditorStore.getState().setDirty(false);
+          // Keep the in-memory editor content aligned with what just hit
+          // disk: always relative-path image refs. This collapses any
+          // `file://` URLs that snuck in mid-session into the canonical
+          // form so source mode shows clean markdown immediately.
+          if (path) {
+            const normalized = rewriteFileUrlsToRelative(snap.content, path);
+            if (normalized !== snap.content) {
+              useEditorStore.getState().setContent(normalized, { markDirty: false });
+            }
+          }
           if (createdNew) {
             await refreshDocs();
           }

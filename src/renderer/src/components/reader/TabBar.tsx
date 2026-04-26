@@ -19,6 +19,7 @@ import {
   openEpubFromDialog,
   openCodeFolderFromDialog,
 } from '@/lib/open-tab';
+import { useNativeViewMute } from '@/lib/native-view-mute';
 import type { Tab } from '@shared/types';
 
 const ICONS: Record<Tab['kind'], React.ComponentType<{ className?: string }>> = {
@@ -82,6 +83,8 @@ export function TabBar(): JSX.Element {
 function NewTabButton(): JSX.Element {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
+  // Native WebContentsViews would otherwise sit on top of the dialog.
+  useNativeViewMute(open);
 
   const handleWeb = async (): Promise<void> => {
     if (await openWebOrGithubTab(input)) {

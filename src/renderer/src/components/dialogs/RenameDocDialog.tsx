@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useNativeViewMute } from '@/lib/native-view-mute';
 
 interface RenameDocDialogProps {
   open: boolean;
@@ -27,6 +28,7 @@ export function RenameDocDialog({
   const [name, setName] = useState(initialName);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useNativeViewMute(open);
 
   useEffect(() => {
     if (open) {

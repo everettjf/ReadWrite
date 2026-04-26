@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Send, ExternalLink, CheckCircle2, AlertCircle, Megaphone } from 'lucide-react';
+import { useNativeViewMute } from '@/lib/native-view-mute';
 import { useEditorStore } from '@/stores/editor';
 import { useSettingsStore } from '@/stores/settings';
 import { buildWeChatHtml } from '@/lib/wechat-html';
@@ -71,6 +72,7 @@ export function PublishToWeChatDialog({ open, onClose }: Props): JSX.Element {
   );
   const [publishing, setPublishing] = useState(false);
   const [publishedId, setPublishedId] = useState<string | null>(null);
+  useNativeViewMute(open);
 
   const credsConfigured = !!wechatAppId && !!wechatAppSecret;
 
