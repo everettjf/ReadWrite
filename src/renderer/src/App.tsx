@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { TitleBar } from './components/layout/TitleBar';
 import { SplitView } from './components/layout/SplitView';
+import { ActionRail } from './components/layout/ActionRail';
 import { ReaderPane } from './components/reader/ReaderPane';
 import { EditorPane } from './components/editor/EditorPane';
 import { SnipOverlay } from './components/snip/SnipOverlay';
-import { RenameDocDialog } from './components/dialogs/RenameDocDialog';
 import { DocsSidebar } from './components/sidebar/DocsSidebar';
 import { WorkspacePicker } from './WorkspacePicker';
 import { useSettingsStore } from './stores/settings';
@@ -18,11 +18,8 @@ import {
   saveMarkdown,
   createNewDocument,
   openMarkdownFromDialog,
-  renameDocFolder,
   openMarkdownAtPath,
   suggestDocNameFromContent,
-  docBasename,
-  docFolder,
 } from './lib/doc-io';
 import { rewriteFileUrlsToRelative } from './lib/path-transform';
 import type { PaneSnapshot } from './lib/snip';
@@ -49,7 +46,6 @@ export function App(): JSX.Element {
 
   const [snipSnap, setSnipSnap] = useState<PaneSnapshot | null>(null);
   const [snipToast, setSnipToast] = useState<string | null>(null);
-  const [renameOpen, setRenameOpen] = useState(false);
 
   useEffect(() => {
     loadSettings().catch((e) => console.error('[settings] load failed:', e));
@@ -317,20 +313,6 @@ export function App(): JSX.Element {
     editor.setContent(opened.content, { markDirty: false });
   }, []);
 
-  const onRenameConfirm = useCallback(
-    async (newName: string): Promise<void> => {
-      const editor = useEditorStore.getState();
-      if (!editor.path) return;
-      const newPath = await renameDocFolder(editor.path, newName);
-      const reopened = await openMarkdownAtPath(newPath);
-      editor.setPath(reopened.path);
-      editor.setContent(reopened.content, { markDirty: false });
-      setRenameOpen(false);
-      await refreshDocs();
-    },
-    [refreshDocs],
-  );
-
   // Global keyboard shortcuts
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -363,21 +345,14 @@ export function App(): JSX.Element {
     return <WorkspacePicker />;
   }
 
-  const editorPath = useEditorStore.getState().path;
-  const renameInitial = editorPath ? docBasename(docFolder(editorPath)) : 'Untitled';
-
   return (
     <div className="flex h-full w-full flex-col">
-      <TitleBar
-        onStartSnip={onStartSnip}
-        onNewDoc={onNewDoc}
-        onOpenDoc={onOpenDoc}
-        onRenameDoc={() => setRenameOpen(true)}
-      />
+      <TitleBar onNewDoc={onNewDoc} onOpenDoc={onOpenDoc} />
       <div className="flex-1 overflow-hidden">
         <SplitView
           sidebar={<DocsSidebar onSwitchDoc={onSwitchDoc} />}
           sidebarVisible={sidebarVisible}
+          rail={<ActionRail onStartSnip={onStartSnip} />}
           left={<ReaderPane />}
           right={<EditorPane />}
         />
@@ -391,13 +366,6 @@ export function App(): JSX.Element {
           {snipToast}
         </div>
       )}
-
-      <RenameDocDialog
-        open={renameOpen}
-        initialName={renameInitial}
-        onCancel={() => setRenameOpen(false)}
-        onConfirm={onRenameConfirm}
-      />
     </div>
   );
 }

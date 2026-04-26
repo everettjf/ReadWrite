@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useEditorStore } from '@/stores/editor';
 import { useSettingsStore } from '@/stores/settings';
 import { Button } from '@/components/ui/button';
@@ -8,28 +8,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuPortal,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Code,
-  Eye,
-  Share2,
-  Sparkles,
-  Loader2,
-  Send,
-  FileCode2,
-  TextSelect,
-  ScrollText,
-  HelpCircle,
-  Upload,
-  Languages,
-  FileSearch,
-  BookOpen,
-} from 'lucide-react';
+import { Code, Eye, Share2, Loader2, Send, FileCode2, Upload } from 'lucide-react';
 import { MilkdownEditor } from './MilkdownEditor';
 import { SourceEditor } from './SourceEditor';
 import { useActiveBridge } from '@/lib/active-bridge';
@@ -37,6 +18,7 @@ import { buildWeChatHtml, copyHtmlToClipboard } from '@/lib/wechat-html';
 import { AIInterpretDialog, type InsertTarget } from '@/components/dialogs/AIInterpretDialog';
 import { AIDiffDialog } from '@/components/dialogs/AIDiffDialog';
 import { PublishToWeChatDialog } from '@/components/dialogs/PublishToWeChatDialog';
+import { useEditorCommandsStore, type AiRequest } from '@/stores/editor-commands';
 import { marked } from 'marked';
 import juice from 'juice';
 
@@ -91,7 +73,6 @@ function EditorToolbar(): JSX.Element {
     error: string | null;
     busy: boolean;
   } | null>(null);
-  const aiBusy = aiDiff?.busy ?? false;
 
   useEffect(() => {
     if (!status || status.kind !== 'info') return;
@@ -269,6 +250,52 @@ function EditorToolbar(): JSX.Element {
     setStatus({ kind: 'info', text: 'Inserted AI response.' });
   };
 
+  // Consume AI requests dispatched from outside the editor subtree (e.g.
+  // the action rail at the reader/editor seam). The rail can't run AI
+  // itself because the active bridge — needed for selection text and
+  // selection-replacement — is only reachable from inside the editor.
+  // The handler closes over fresh state via a ref, so the subscription
+  // can stay set up once per `aiEnabled` flip instead of resubscribing
+  // every render.
+  const aiCommandHandlerRef = useRef<(cmd: AiRequest) => void>(() => {});
+  aiCommandHandlerRef.current = (cmd: AiRequest): void => {
+    switch (cmd.kind) {
+      case 'polish':
+        if (cmd.target === 'selection') {
+          requestAiDiff(POLISH_SELECTION_INSTRUCTION, 'Polish selection', 'selection');
+        } else {
+          requestAiDiff(POLISH_DOC_INSTRUCTION, 'Polish whole document', 'document');
+        }
+        return;
+      case 'translate': {
+        const instruction = cmd.lang === 'en' ? TRANSLATE_EN_INSTRUCTION : TRANSLATE_ZH_INSTRUCTION;
+        const docLabel = cmd.lang === 'en' ? 'Translate doc to English' : '翻译全文为中文';
+        const selLabel = cmd.lang === 'en' ? 'Translate to English' : '翻译为中文';
+        requestAiDiff(instruction, cmd.target === 'document' ? docLabel : selLabel, cmd.target);
+        return;
+      }
+      case 'summarize':
+        requestAiDiff(SUMMARIZE_INSTRUCTION, 'Summarize document', 'document');
+        return;
+      case 'explain':
+        requestAiDiff(EXPLAIN_INSTRUCTION, 'Explain selection', 'selection');
+        return;
+      case 'interpret':
+        onOpenInterpret();
+        return;
+    }
+  };
+  useEffect(() => {
+    if (!aiEnabled) return;
+    const queued = useEditorCommandsStore.getState().consume();
+    if (queued) aiCommandHandlerRef.current(queued);
+    return useEditorCommandsStore.subscribe((s) => {
+      if (!s.pending) return;
+      const cmd = useEditorCommandsStore.getState().consume();
+      if (cmd) aiCommandHandlerRef.current(cmd);
+    });
+  }, [aiEnabled]);
+
   return (
     <>
       <div className="flex h-10 shrink-0 items-center gap-1 border-b border-border bg-background px-2">
@@ -296,126 +323,6 @@ function EditorToolbar(): JSX.Element {
           {dirty && ' ·'}
         </span>
         <div className="flex-1" />
-
-        {aiEnabled && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" title="AI" disabled={aiBusy}>
-                {aiBusy ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Sparkles className="h-4 w-4" />
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-72">
-              <DropdownMenuLabel>AI</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Polish
-                </DropdownMenuSubTrigger>
-                <DropdownMenuPortal>
-                  <DropdownMenuSubContent className="w-56">
-                    <DropdownMenuItem
-                      onClick={() =>
-                        requestAiDiff(POLISH_SELECTION_INSTRUCTION, 'Polish selection', 'selection')
-                      }
-                    >
-                      <TextSelect className="mr-2 h-4 w-4" /> Selection
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() =>
-                        requestAiDiff(POLISH_DOC_INSTRUCTION, 'Polish whole document', 'document')
-                      }
-                    >
-                      <ScrollText className="mr-2 h-4 w-4" /> Whole document
-                    </DropdownMenuItem>
-                  </DropdownMenuSubContent>
-                </DropdownMenuPortal>
-              </DropdownMenuSub>
-
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                  <Languages className="mr-2 h-4 w-4" />
-                  Translate
-                </DropdownMenuSubTrigger>
-                <DropdownMenuPortal>
-                  <DropdownMenuSubContent className="w-64">
-                    <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                      Selection →
-                    </DropdownMenuLabel>
-                    <DropdownMenuItem
-                      onClick={() =>
-                        requestAiDiff(TRANSLATE_EN_INSTRUCTION, 'Translate to English', 'selection')
-                      }
-                    >
-                      English
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() =>
-                        requestAiDiff(TRANSLATE_ZH_INSTRUCTION, '翻译为中文', 'selection')
-                      }
-                    >
-                      中文
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                      Whole document →
-                    </DropdownMenuLabel>
-                    <DropdownMenuItem
-                      onClick={() =>
-                        requestAiDiff(
-                          TRANSLATE_EN_INSTRUCTION,
-                          'Translate doc to English',
-                          'document',
-                        )
-                      }
-                    >
-                      English
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() =>
-                        requestAiDiff(TRANSLATE_ZH_INSTRUCTION, '翻译全文为中文', 'document')
-                      }
-                    >
-                      中文
-                    </DropdownMenuItem>
-                  </DropdownMenuSubContent>
-                </DropdownMenuPortal>
-              </DropdownMenuSub>
-
-              <DropdownMenuItem
-                onClick={() =>
-                  requestAiDiff(SUMMARIZE_INSTRUCTION, 'Summarize document', 'document')
-                }
-              >
-                <FileSearch className="mr-2 h-4 w-4" />
-                Summarize document
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onClick={() => requestAiDiff(EXPLAIN_INSTRUCTION, 'Explain selection', 'selection')}
-              >
-                <BookOpen className="mr-2 h-4 w-4" />
-                Explain selection
-              </DropdownMenuItem>
-
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onOpenInterpret}>
-                <HelpCircle className="mr-2 h-4 w-4" />
-                <div className="flex flex-col">
-                  <span>Interpret with prompt…</span>
-                  <span className="text-[10px] text-muted-foreground">
-                    Custom prompt, review response, then insert
-                  </span>
-                </div>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

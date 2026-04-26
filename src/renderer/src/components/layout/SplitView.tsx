@@ -9,10 +9,16 @@ import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 interface SplitViewProps {
-  /** Optional left sidebar (e.g. workspace docs list). */
+  /** Optional docs sidebar — appears on the right, alongside the editor. */
   sidebar?: ReactNode;
   /** Show the sidebar? When false, the sidebar panel collapses to 0 width. */
   sidebarVisible?: boolean;
+  /**
+   * Vertical action rail rendered flush against the editor panel's left
+   * edge — i.e. at the reader/editor seam. Hosts cross-pane actions like
+   * snip + AI menu.
+   */
+  rail?: ReactNode;
   left: ReactNode;
   right: ReactNode;
 }
@@ -21,24 +27,22 @@ const RESIZE_HANDLE_CLASS =
   'relative w-[3px] cursor-col-resize bg-border transition-colors hover:bg-primary/40 data-[resize-handle-active]:bg-primary';
 
 /**
- * Three-pane layout (sidebar / reader / editor) where the sidebar is a
- * `collapsible` panel from react-resizable-panels rather than a separate
- * conditional branch. Toggling visibility issues an imperative
- * `collapse()` / `expand()` to the same panel — the underlying
- * PanelGroup never remounts, so layout state stays consistent across
- * any number of toggles.
- *
- * Without this, swapping between two-vs-three-panel branches would
- * unmount and remount the PanelGroup; the library doesn't carry layout
- * state across that, leaving panes at zero width on the second toggle.
+ * Three-pane layout: reader (left) / editor (middle, with action rail on
+ * its left edge) / docs sidebar (right, collapsible). The sidebar uses
+ * an imperative `collapse()` / `expand()` so the PanelGroup never
+ * remounts when toggling — keeps layout state consistent across any
+ * number of toggles.
  */
-export function SplitView({ sidebar, sidebarVisible, left, right }: SplitViewProps): JSX.Element {
+export function SplitView({
+  sidebar,
+  sidebarVisible,
+  rail,
+  left,
+  right,
+}: SplitViewProps): JSX.Element {
   const sidebarRef = useRef<ImperativePanelHandle>(null);
   const showSidebar = !!sidebar && (sidebarVisible ?? true);
 
-  // Keep the panel state in sync with the prop. Use the imperative API so
-  // controlled toggling doesn't fight react-resizable-panels' uncontrolled
-  // sizing.
   useEffect(() => {
     const panel = sidebarRef.current;
     if (!panel) return;
@@ -51,10 +55,21 @@ export function SplitView({ sidebar, sidebarVisible, left, right }: SplitViewPro
 
   return (
     <PanelGroup direction="horizontal" className="h-full w-full">
+      <Panel id="reader" order={1} defaultSize={showSidebar ? 41 : 50} minSize={20}>
+        <div className="h-full w-full overflow-hidden">{left}</div>
+      </Panel>
+      <PanelResizeHandle className={RESIZE_HANDLE_CLASS} />
+      <Panel id="editor" order={2} defaultSize={showSidebar ? 41 : 50} minSize={20}>
+        <div className="flex h-full w-full">
+          {rail}
+          <div className="min-w-0 flex-1 overflow-hidden">{right}</div>
+        </div>
+      </Panel>
+      <PanelResizeHandle className={cn(RESIZE_HANDLE_CLASS, !showSidebar && 'hidden')} />
       <Panel
         ref={sidebarRef}
         id="sidebar"
-        order={1}
+        order={3}
         collapsible
         collapsedSize={0}
         defaultSize={showSidebar ? 18 : 0}
@@ -62,14 +77,6 @@ export function SplitView({ sidebar, sidebarVisible, left, right }: SplitViewPro
         maxSize={35}
       >
         <div className="h-full w-full overflow-hidden">{sidebar}</div>
-      </Panel>
-      <PanelResizeHandle className={cn(RESIZE_HANDLE_CLASS, !showSidebar && 'hidden')} />
-      <Panel id="reader" order={2} defaultSize={showSidebar ? 41 : 50} minSize={20}>
-        <div className="h-full w-full overflow-hidden">{left}</div>
-      </Panel>
-      <PanelResizeHandle className={RESIZE_HANDLE_CLASS} />
-      <Panel id="editor" order={3} minSize={20}>
-        <div className="h-full w-full overflow-hidden">{right}</div>
       </Panel>
     </PanelGroup>
   );

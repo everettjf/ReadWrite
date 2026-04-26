@@ -10,17 +10,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  Crop,
   FileText,
   Settings,
   FilePlus,
-  Pencil,
   Folder as FolderIcon,
   ChevronDown,
   Plus,
   ExternalLink,
-  PanelLeftOpen,
-  PanelLeftClose,
+  PanelRightOpen,
+  PanelRightClose,
 } from 'lucide-react';
 import { useEditorStore } from '@/stores/editor';
 import { useWorkspaceStore } from '@/stores/workspace';
@@ -29,18 +27,11 @@ import { docBasename } from '@/lib/doc-io';
 import { cn } from '@/lib/utils';
 
 interface TitleBarProps {
-  onStartSnip?: () => void;
   onNewDoc?: () => void;
   onOpenDoc?: () => void;
-  onRenameDoc?: () => void;
 }
 
-export function TitleBar({
-  onStartSnip,
-  onNewDoc,
-  onOpenDoc,
-  onRenameDoc,
-}: TitleBarProps): JSX.Element {
+export function TitleBar({ onNewDoc, onOpenDoc }: TitleBarProps): JSX.Element {
   const path = useEditorStore((s) => s.path);
   const dirty = useEditorStore((s) => s.dirty);
   const active = useWorkspaceStore((s) => s.active);
@@ -127,9 +118,9 @@ export function TitleBar({
                 onClick={() => updateSettings({ sidebarVisible: !sidebarVisible })}
               >
                 {sidebarVisible ? (
-                  <PanelLeftClose className="h-4 w-4" />
+                  <PanelRightClose className="h-4 w-4" />
                 ) : (
-                  <PanelLeftOpen className="h-4 w-4" />
+                  <PanelRightOpen className="h-4 w-4" />
                 )}
               </Button>
             </TooltipTrigger>
@@ -224,28 +215,6 @@ export function TitleBar({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Open Markdown</TooltipContent>
-            </Tooltip>
-          )}
-
-          {onRenameDoc && path && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={onRenameDoc}>
-                  <Pencil className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Rename document</TooltipContent>
-            </Tooltip>
-          )}
-
-          {onStartSnip && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={onStartSnip}>
-                  <Crop className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Snip region from reader (⇧⌘S)</TooltipContent>
             </Tooltip>
           )}
 
