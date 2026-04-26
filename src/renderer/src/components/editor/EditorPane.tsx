@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 import { MilkdownEditor } from './MilkdownEditor';
 import { SourceEditor } from './SourceEditor';
-import { useMilkdownBridge } from '@/lib/milkdown-instance';
+import { useActiveBridge } from '@/lib/active-bridge';
 import { buildWeChatHtml, copyHtmlToClipboard } from '@/lib/wechat-html';
 import { AIInterpretDialog, type InsertTarget } from '@/components/dialogs/AIInterpretDialog';
 import { PublishToWeChatDialog } from '@/components/dialogs/PublishToWeChatDialog';
@@ -66,7 +66,7 @@ function EditorToolbar(): JSX.Element {
   const setContent = useEditorStore((s) => s.setContent);
   const aiEnabled = useSettingsStore((s) => s.aiEnabled);
   const wechatExportTheme = useSettingsStore((s) => s.wechatExportTheme);
-  const bridge = useMilkdownBridge();
+  const bridge = useActiveBridge();
 
   const [aiBusy, setAiBusy] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
@@ -118,11 +118,7 @@ function EditorToolbar(): JSX.Element {
     }
   };
 
-  const requireWysiwyg = (): boolean => {
-    if (mode !== 'wysiwyg') {
-      setStatus({ kind: 'error', text: 'Switch to WYSIWYG mode to use AI actions.' });
-      return false;
-    }
+  const requireBridge = (): boolean => {
     if (!bridge) {
       setStatus({ kind: 'error', text: 'Editor is still booting — try again in a moment.' });
       return false;
@@ -132,7 +128,7 @@ function EditorToolbar(): JSX.Element {
 
   const onPolishSelection = async (): Promise<void> => {
     setStatus(null);
-    if (!requireWysiwyg() || !bridge) return;
+    if (!requireBridge() || !bridge) return;
     const selection = bridge.getSelectionText();
     if (!selection.trim()) {
       setStatus({ kind: 'error', text: 'Select some text first to polish a portion.' });
@@ -177,7 +173,7 @@ function EditorToolbar(): JSX.Element {
     target: 'selection' | 'document',
   ): Promise<void> => {
     setStatus(null);
-    if (!requireWysiwyg() || !bridge) return;
+    if (!requireBridge() || !bridge) return;
 
     let input: string;
     if (target === 'selection') {
@@ -212,7 +208,7 @@ function EditorToolbar(): JSX.Element {
 
   const onOpenInterpret = (): void => {
     setStatus(null);
-    if (!requireWysiwyg()) return;
+    if (!requireBridge()) return;
     setInterpretSelection(bridge?.getSelectionText() ?? '');
     setInterpretOpen(true);
   };
@@ -222,9 +218,9 @@ function EditorToolbar(): JSX.Element {
     if (target === 'replace-selection') {
       bridge.replaceSelection(markdown);
     } else if (target === 'insert-after-selection') {
-      // ProseMirror tip: insertMarkdown drops at the current cursor; after a
+      // The active bridge inserts markdown at the current cursor; after a
       // selection that means at the end of the selection range.
-      bridge.insertMarkdown(`\n\n${markdown}\n\n`);
+      bridge.insertAtCursor(`\n\n${markdown}\n\n`);
     } else {
       setContent(`${content}\n\n${markdown}\n`, { markDirty: true });
     }
@@ -451,12 +447,9 @@ export function EditorPane(): JSX.Element {
           <EditorToolbar />
         </MilkdownEditor>
       ) : (
-        <>
+        <SourceEditor>
           <EditorToolbar />
-          <div className="flex-1 overflow-hidden">
-            <SourceEditor />
-          </div>
-        </>
+        </SourceEditor>
       )}
     </div>
   );

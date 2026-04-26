@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { EditorState } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLineGutter } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
@@ -6,8 +6,13 @@ import { markdown } from '@codemirror/lang-markdown';
 import { bracketMatching, indentOnInput } from '@codemirror/language';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { useEditorStore } from '@/stores/editor';
+import { SourceBridgeProvider } from '@/lib/source-bridge';
 
-export function SourceEditor(): JSX.Element {
+interface SourceEditorProps {
+  children?: ReactNode;
+}
+
+export function SourceEditor({ children }: SourceEditorProps): JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const content = useEditorStore((s) => s.content);
@@ -72,5 +77,14 @@ export function SourceEditor(): JSX.Element {
     });
   }, [content]);
 
-  return <div ref={hostRef} className="h-full w-full overflow-auto" />;
+  const getView = useCallback((): EditorView | null => viewRef.current, []);
+
+  return (
+    <SourceBridgeProvider getView={getView}>
+      <div className="flex h-full w-full flex-col">
+        {children}
+        <div ref={hostRef} className="flex-1 overflow-auto" />
+      </div>
+    </SourceBridgeProvider>
+  );
 }
