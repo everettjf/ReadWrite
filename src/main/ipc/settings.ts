@@ -20,7 +20,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   imagesDirMode: 'next-to-doc',
   imagesDirSubfolderName: 'images',
 
-  aiEnabled: false,
+  aiEnabled: true,
   aiEndpoint: 'https://api.openai.com/v1',
   aiApiKey: '',
   aiModel: 'gpt-4o-mini',

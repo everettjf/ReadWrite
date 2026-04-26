@@ -35,6 +35,7 @@ import { SourceEditor } from './SourceEditor';
 import { useActiveBridge } from '@/lib/active-bridge';
 import { buildWeChatHtml, copyHtmlToClipboard } from '@/lib/wechat-html';
 import { AIInterpretDialog, type InsertTarget } from '@/components/dialogs/AIInterpretDialog';
+import { AIDiffDialog } from '@/components/dialogs/AIDiffDialog';
 import { PublishToWeChatDialog } from '@/components/dialogs/PublishToWeChatDialog';
 import { marked } from 'marked';
 import juice from 'juice';
@@ -65,15 +66,32 @@ function EditorToolbar(): JSX.Element {
   const dirty = useEditorStore((s) => s.dirty);
   const setContent = useEditorStore((s) => s.setContent);
   const aiEnabled = useSettingsStore((s) => s.aiEnabled);
+  const aiApiKey = useSettingsStore((s) => s.aiApiKey);
   const wechatExportTheme = useSettingsStore((s) => s.wechatExportTheme);
   const bridge = useActiveBridge();
 
-  const [aiBusy, setAiBusy] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
   const [status, setStatus] = useState<ToolbarStatus | null>(null);
   const [interpretOpen, setInterpretOpen] = useState(false);
   const [interpretSelection, setInterpretSelection] = useState('');
   const [publishOpen, setPublishOpen] = useState(false);
+
+  // The active AI diff request — null when no AI action is in flight or
+  // pending review. The same state object carries through three phases:
+  //   busy=true               → AI is generating (spinner in dialog)
+  //   busy=false, error set   → AI failed (error in dialog, can Regenerate)
+  //   busy=false, proposed    → AI succeeded (diff in dialog, Accept/Reject)
+  const [aiDiff, setAiDiff] = useState<{
+    title: string;
+    target: 'selection' | 'document';
+    instruction: string;
+    input: string;
+    original: string;
+    proposed: string | null;
+    error: string | null;
+    busy: boolean;
+  } | null>(null);
+  const aiBusy = aiDiff?.busy ?? false;
 
   useEffect(() => {
     if (!status || status.kind !== 'info') return;
@@ -126,54 +144,31 @@ function EditorToolbar(): JSX.Element {
     return true;
   };
 
-  const onPolishSelection = async (): Promise<void> => {
-    setStatus(null);
-    if (!requireBridge() || !bridge) return;
-    const selection = bridge.getSelectionText();
-    if (!selection.trim()) {
-      setStatus({ kind: 'error', text: 'Select some text first to polish a portion.' });
-      return;
-    }
-    setAiBusy(true);
-    try {
-      const result = await window.api.ai.complete({
-        input: selection,
-        instruction: POLISH_SELECTION_INSTRUCTION,
+  const requireAiKey = (): boolean => {
+    if (!aiApiKey || !aiApiKey.trim()) {
+      setStatus({
+        kind: 'error',
+        text: 'No AI API key configured. Open Settings → AI to add one.',
       });
-      bridge.replaceSelection(result.text);
-      setStatus({ kind: 'info', text: 'Polished selection.' });
-    } catch (err) {
-      setStatus({ kind: 'error', text: (err as Error).message });
-    } finally {
-      setAiBusy(false);
+      return false;
     }
+    return true;
   };
 
-  const onPolishDocument = async (): Promise<void> => {
-    setStatus(null);
-    setAiBusy(true);
-    try {
-      const result = await window.api.ai.complete({
-        input: content,
-        instruction: POLISH_DOC_INSTRUCTION,
-      });
-      setContent(result.text, { markDirty: true });
-      setStatus({ kind: 'info', text: 'Polished whole document.' });
-    } catch (err) {
-      setStatus({ kind: 'error', text: (err as Error).message });
-    } finally {
-      setAiBusy(false);
-    }
-  };
-
-  /** Generic AI action: applies an instruction to selection (replace) or whole doc (replace). */
-  const runAiAction = async (
+  /**
+   * Kick off a destructive AI action (Polish / Translate / Summarize / Explain).
+   * Always opens the diff dialog with `busy=true`, runs the AI in the background,
+   * then surfaces the result there. The user explicitly Accepts before the
+   * editor changes.
+   */
+  const requestAiDiff = async (
     instruction: string,
     label: string,
     target: 'selection' | 'document',
   ): Promise<void> => {
     setStatus(null);
     if (!requireBridge() || !bridge) return;
+    if (!requireAiKey()) return;
 
     let input: string;
     if (target === 'selection') {
@@ -190,19 +185,65 @@ function EditorToolbar(): JSX.Element {
       input = content;
     }
 
-    setAiBusy(true);
+    setAiDiff({
+      title: label,
+      target,
+      instruction,
+      input,
+      original: input,
+      proposed: null,
+      error: null,
+      busy: true,
+    });
+
     try {
       const result = await window.api.ai.complete({ input, instruction });
-      if (target === 'selection') {
-        bridge.replaceSelection(result.text);
-      } else {
-        setContent(result.text, { markDirty: true });
-      }
-      setStatus({ kind: 'info', text: `${label} done.` });
+      setAiDiff((prev) =>
+        prev && prev.input === input
+          ? { ...prev, proposed: result.text, error: null, busy: false }
+          : prev,
+      );
     } catch (err) {
-      setStatus({ kind: 'error', text: (err as Error).message });
-    } finally {
-      setAiBusy(false);
+      setAiDiff((prev) =>
+        prev && prev.input === input
+          ? { ...prev, error: (err as Error).message, busy: false }
+          : prev,
+      );
+    }
+  };
+
+  const onDiffAccept = (finalText: string): void => {
+    if (!aiDiff || !bridge) return;
+    if (aiDiff.target === 'selection') {
+      bridge.replaceSelection(finalText);
+    } else {
+      setContent(finalText, { markDirty: true });
+    }
+    setStatus({ kind: 'info', text: `${aiDiff.title} applied.` });
+    setAiDiff(null);
+  };
+
+  const onDiffReject = (): void => {
+    setAiDiff(null);
+  };
+
+  const onDiffRegenerate = async (): Promise<void> => {
+    if (!aiDiff) return;
+    const { input, instruction } = aiDiff;
+    setAiDiff((prev) => (prev ? { ...prev, proposed: null, error: null, busy: true } : prev));
+    try {
+      const result = await window.api.ai.complete({ input, instruction });
+      setAiDiff((prev) =>
+        prev && prev.input === input
+          ? { ...prev, proposed: result.text, error: null, busy: false }
+          : prev,
+      );
+    } catch (err) {
+      setAiDiff((prev) =>
+        prev && prev.input === input
+          ? { ...prev, error: (err as Error).message, busy: false }
+          : prev,
+      );
     }
   };
 
@@ -278,10 +319,18 @@ function EditorToolbar(): JSX.Element {
                 </DropdownMenuSubTrigger>
                 <DropdownMenuPortal>
                   <DropdownMenuSubContent className="w-56">
-                    <DropdownMenuItem onClick={onPolishSelection}>
+                    <DropdownMenuItem
+                      onClick={() =>
+                        requestAiDiff(POLISH_SELECTION_INSTRUCTION, 'Polish selection', 'selection')
+                      }
+                    >
                       <TextSelect className="mr-2 h-4 w-4" /> Selection
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={onPolishDocument}>
+                    <DropdownMenuItem
+                      onClick={() =>
+                        requestAiDiff(POLISH_DOC_INSTRUCTION, 'Polish whole document', 'document')
+                      }
+                    >
                       <ScrollText className="mr-2 h-4 w-4" /> Whole document
                     </DropdownMenuItem>
                   </DropdownMenuSubContent>
@@ -300,14 +349,14 @@ function EditorToolbar(): JSX.Element {
                     </DropdownMenuLabel>
                     <DropdownMenuItem
                       onClick={() =>
-                        runAiAction(TRANSLATE_EN_INSTRUCTION, 'Translate to English', 'selection')
+                        requestAiDiff(TRANSLATE_EN_INSTRUCTION, 'Translate to English', 'selection')
                       }
                     >
                       English
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() =>
-                        runAiAction(TRANSLATE_ZH_INSTRUCTION, '翻译为中文', 'selection')
+                        requestAiDiff(TRANSLATE_ZH_INSTRUCTION, '翻译为中文', 'selection')
                       }
                     >
                       中文
@@ -318,7 +367,7 @@ function EditorToolbar(): JSX.Element {
                     </DropdownMenuLabel>
                     <DropdownMenuItem
                       onClick={() =>
-                        runAiAction(
+                        requestAiDiff(
                           TRANSLATE_EN_INSTRUCTION,
                           'Translate doc to English',
                           'document',
@@ -329,7 +378,7 @@ function EditorToolbar(): JSX.Element {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() =>
-                        runAiAction(TRANSLATE_ZH_INSTRUCTION, '翻译全文为中文', 'document')
+                        requestAiDiff(TRANSLATE_ZH_INSTRUCTION, '翻译全文为中文', 'document')
                       }
                     >
                       中文
@@ -339,14 +388,16 @@ function EditorToolbar(): JSX.Element {
               </DropdownMenuSub>
 
               <DropdownMenuItem
-                onClick={() => runAiAction(SUMMARIZE_INSTRUCTION, 'Summarize', 'document')}
+                onClick={() =>
+                  requestAiDiff(SUMMARIZE_INSTRUCTION, 'Summarize document', 'document')
+                }
               >
                 <FileSearch className="mr-2 h-4 w-4" />
                 Summarize document
               </DropdownMenuItem>
 
               <DropdownMenuItem
-                onClick={() => runAiAction(EXPLAIN_INSTRUCTION, 'Explain', 'selection')}
+                onClick={() => requestAiDiff(EXPLAIN_INSTRUCTION, 'Explain selection', 'selection')}
               >
                 <BookOpen className="mr-2 h-4 w-4" />
                 Explain selection
@@ -433,6 +484,20 @@ function EditorToolbar(): JSX.Element {
       )}
 
       <PublishToWeChatDialog open={publishOpen} onClose={() => setPublishOpen(false)} />
+
+      {aiDiff && (
+        <AIDiffDialog
+          open={aiDiff !== null}
+          title={aiDiff.title}
+          original={aiDiff.original}
+          proposed={aiDiff.proposed}
+          error={aiDiff.error}
+          busy={aiDiff.busy}
+          onAccept={onDiffAccept}
+          onReject={onDiffReject}
+          onRegenerate={onDiffRegenerate}
+        />
+      )}
     </>
   );
 }
