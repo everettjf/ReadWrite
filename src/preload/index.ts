@@ -144,6 +144,8 @@ const api = {
       ipcRenderer.invoke(IPC.WORKSPACE_RENAME_KNOWN, opts),
     forget: (path: string): Promise<KnownWorkspace[]> =>
       ipcRenderer.invoke(IPC.WORKSPACE_FORGET, path),
+    trash: (path: string): Promise<KnownWorkspace[]> =>
+      ipcRenderer.invoke(IPC.WORKSPACE_TRASH, path),
     getSuggestedParents: (): Promise<SuggestedParent[]> =>
       ipcRenderer.invoke(IPC.WORKSPACE_GET_SUGGESTED_PARENTS),
     reveal: (path: string): Promise<void> => ipcRenderer.invoke(IPC.WORKSPACE_REVEAL, path),

@@ -253,6 +253,22 @@ export function registerWorkspaceIpc(_ctx: IpcContext): void {
     return list;
   });
 
+  ipcMain.handle(IPC.WORKSPACE_TRASH, async (_e, path: string): Promise<KnownWorkspace[]> => {
+    // Move the entire workspace folder (with all its docs and images) to
+    // the system Trash. Then forget the entry from the known list and
+    // clear the active pointer if it was pointing here.
+    if (await pathExists(path)) {
+      await shell.trashItem(path);
+    }
+    const list = getKnownWorkspaces().filter((w) => w.path !== path);
+    setKnownWorkspaces(list);
+    if (getActiveWorkspaceImpl() === path) {
+      kvSet(KV_ACTIVE, null);
+      broadcastWorkspaceChanged(null);
+    }
+    return list;
+  });
+
   ipcMain.handle(
     IPC.WORKSPACE_GET_SUGGESTED_PARENTS,
     async (): Promise<SuggestedParent[]> => suggestedParents(),

@@ -2,7 +2,14 @@ import { useEffect } from 'react';
 import { useWorkspaceStore } from '@/stores/workspace';
 import { Section, Field } from './Field';
 import { Button } from '@/components/ui/button';
-import { Folder, Plus, ExternalLink, Trash2 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Folder, Plus, ExternalLink, EyeOff, Trash2, MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function WorkspacesPanel(): JSX.Element {
@@ -11,6 +18,7 @@ export function WorkspacesPanel(): JSX.Element {
   const load = useWorkspaceStore((s) => s.load);
   const setActive = useWorkspaceStore((s) => s.setActive);
   const forget = useWorkspaceStore((s) => s.forget);
+  const trash = useWorkspaceStore((s) => s.trash);
 
   useEffect(() => {
     load().catch(() => null);
@@ -41,12 +49,35 @@ export function WorkspacesPanel(): JSX.Element {
     await setActive(entry.path);
   };
 
+  const onForget = (path: string, name: string): void => {
+    if (
+      confirm(
+        `Forget workspace "${name}"?\n\n` +
+          'This only removes it from the list inside ReadWrite — the folder on disk and its documents are kept untouched.',
+      )
+    ) {
+      forget(path).catch((err) => alert(`Forget failed: ${(err as Error).message}`));
+    }
+  };
+
+  const onDelete = (path: string, name: string): void => {
+    if (
+      confirm(
+        `Delete workspace "${name}"?\n\n` +
+          'This moves the entire workspace folder (every document and image inside it) to the system Trash. ' +
+          'You can still restore it from Trash afterwards.',
+      )
+    ) {
+      trash(path).catch((err) => alert(`Delete failed: ${(err as Error).message}`));
+    }
+  };
+
   return (
     <div className="space-y-8">
       <Section title="Workspaces">
         <Field
           label="Known workspaces"
-          description="Each workspace is a folder; documents inside it live in subfolders. Click to switch — the editor reloads with that workspace as the active root."
+          description="Each workspace is a folder; documents inside it live in subfolders. Click Switch to make a workspace active. The ⋯ menu has Forget (remove from this list, keep on disk) and Delete (move the whole folder to Trash)."
         >
           <div className="space-y-1.5">
             {known.length === 0 && (
@@ -88,28 +119,40 @@ export function WorkspacesPanel(): JSX.Element {
                       Active
                     </span>
                   )}
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => window.api.workspace.reveal(w.path)}
-                    title="Reveal in Finder"
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => {
-                      if (
-                        confirm(`Forget workspace "${w.name}"? The folder on disk is not deleted.`)
-                      ) {
-                        forget(w.path);
-                      }
-                    }}
-                    title="Remove from list (does not delete the folder)"
-                  >
-                    <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="icon" variant="ghost" title="More actions">
+                        <MoreHorizontal className="h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-64">
+                      <DropdownMenuItem onSelect={() => window.api.workspace.reveal(w.path)}>
+                        <ExternalLink className="mr-2 h-4 w-4" /> Reveal in Finder
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onSelect={() => onForget(w.path, w.name)}>
+                        <EyeOff className="mr-2 h-4 w-4" />
+                        <div className="flex flex-col">
+                          <span>Forget</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            Remove from list, keep folder on disk
+                          </span>
+                        </div>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() => onDelete(w.path, w.name)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        <div className="flex flex-col">
+                          <span>Delete…</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            Move folder to system Trash
+                          </span>
+                        </div>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               );
             })}

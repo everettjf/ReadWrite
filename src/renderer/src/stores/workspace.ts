@@ -10,6 +10,7 @@ interface WorkspaceState {
   setActive: (path: string) => Promise<KnownWorkspace>;
   create: (parent: string, name: string) => Promise<KnownWorkspace>;
   forget: (path: string) => Promise<void>;
+  trash: (path: string) => Promise<void>;
   rename: (path: string, newName: string) => Promise<void>;
   refreshDocs: () => Promise<void>;
 }
@@ -52,6 +53,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   forget: async (path: string): Promise<void> => {
     const known = await window.api.workspace.forget(path);
+    const active = await window.api.workspace.getActive();
+    const docs = await loadDocs(active);
+    set({ active, known, docs });
+  },
+
+  trash: async (path: string): Promise<void> => {
+    const known = await window.api.workspace.trash(path);
     const active = await window.api.workspace.getActive();
     const docs = await loadDocs(active);
     set({ active, known, docs });

@@ -54,6 +54,7 @@ export const IPC = {
   WORKSPACE_CREATE: 'workspace:create',
   WORKSPACE_RENAME_KNOWN: 'workspace:rename-known',
   WORKSPACE_FORGET: 'workspace:forget',
+  WORKSPACE_TRASH: 'workspace:trash',
   WORKSPACE_GET_SUGGESTED_PARENTS: 'workspace:get-suggested-parents',
   WORKSPACE_REVEAL: 'workspace:reveal',
   WORKSPACE_LIST_DOCS: 'workspace:list-docs',
