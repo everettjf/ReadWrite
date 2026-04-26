@@ -13,12 +13,6 @@ interface SplitViewProps {
   sidebar?: ReactNode;
   /** Show the sidebar? When false, the sidebar panel collapses to 0 width. */
   sidebarVisible?: boolean;
-  /**
-   * Vertical action rail rendered flush against the editor panel's left
-   * edge — i.e. at the reader/editor seam. Hosts cross-pane actions like
-   * snip + AI menu.
-   */
-  rail?: ReactNode;
   left: ReactNode;
   right: ReactNode;
 }
@@ -27,19 +21,12 @@ const RESIZE_HANDLE_CLASS =
   'relative w-[3px] cursor-col-resize bg-border transition-colors hover:bg-primary/40 data-[resize-handle-active]:bg-primary';
 
 /**
- * Three-pane layout: reader (left) / editor (middle, with action rail on
- * its left edge) / docs sidebar (right, collapsible). The sidebar uses
- * an imperative `collapse()` / `expand()` so the PanelGroup never
- * remounts when toggling — keeps layout state consistent across any
- * number of toggles.
+ * Three-pane layout: reader (left) / editor (middle) / docs sidebar
+ * (right, collapsible). The sidebar uses an imperative `collapse()` /
+ * `expand()` so the PanelGroup never remounts when toggling — keeps
+ * layout state consistent across any number of toggles.
  */
-export function SplitView({
-  sidebar,
-  sidebarVisible,
-  rail,
-  left,
-  right,
-}: SplitViewProps): JSX.Element {
+export function SplitView({ sidebar, sidebarVisible, left, right }: SplitViewProps): JSX.Element {
   const sidebarRef = useRef<ImperativePanelHandle>(null);
   const showSidebar = !!sidebar && (sidebarVisible ?? true);
 
@@ -60,10 +47,7 @@ export function SplitView({
       </Panel>
       <PanelResizeHandle className={RESIZE_HANDLE_CLASS} />
       <Panel id="editor" order={2} defaultSize={showSidebar ? 41 : 50} minSize={20}>
-        <div className="flex h-full w-full">
-          {rail}
-          <div className="min-w-0 flex-1 overflow-hidden">{right}</div>
-        </div>
+        <div className="h-full w-full overflow-hidden">{right}</div>
       </Panel>
       <PanelResizeHandle className={cn(RESIZE_HANDLE_CLASS, !showSidebar && 'hidden')} />
       <Panel

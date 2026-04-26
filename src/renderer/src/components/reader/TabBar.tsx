@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTabsStore } from '@/stores/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, X, Globe, FileText, Book, Code2, Github } from 'lucide-react';
+import { Plus, X, Globe, FileText, Book, Code2, Github, Crop } from 'lucide-react';
 import { cn, toGithubWebUrl } from '@/lib/utils';
 import {
   openWebOrGithubTab,
@@ -30,7 +31,11 @@ const ICONS: Record<Tab['kind'], React.ComponentType<{ className?: string }>> = 
   code: Code2,
 };
 
-export function TabBar(): JSX.Element {
+interface TabBarProps {
+  onStartSnip?: () => void;
+}
+
+export function TabBar({ onStartSnip }: TabBarProps): JSX.Element {
   const { tabs, activeTabId, setActive, removeTab } = useTabsStore();
 
   const onClose = async (e: React.MouseEvent, id: string): Promise<void> => {
@@ -48,35 +53,58 @@ export function TabBar(): JSX.Element {
   };
 
   return (
-    <div className="flex h-9 shrink-0 items-center gap-0.5 overflow-x-auto border-b border-border bg-muted/30 px-2">
-      {tabs.map((tab) => {
-        const Icon = ICONS[tab.kind];
-        const active = tab.id === activeTabId;
-        return (
-          <div
-            key={tab.id}
-            onClick={() => onFocus(tab.id)}
-            className={cn(
-              'group flex h-7 max-w-52 cursor-pointer items-center gap-1.5 rounded-md px-2 text-xs transition-colors',
-              active
-                ? 'bg-background shadow-sm'
-                : 'text-muted-foreground hover:bg-background/60 hover:text-foreground',
-            )}
-          >
-            <Icon className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">{tab.title || 'Untitled'}</span>
-            <button
-              className="ml-1 rounded p-0.5 opacity-0 transition-opacity hover:bg-accent group-hover:opacity-100"
-              onClick={(e) => onClose(e, tab.id)}
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </div>
-        );
-      })}
+    <TooltipProvider delayDuration={300}>
+      <div className="flex h-9 shrink-0 items-center border-b border-border bg-muted/30">
+        <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto px-2">
+          {tabs.map((tab) => {
+            const Icon = ICONS[tab.kind];
+            const active = tab.id === activeTabId;
+            return (
+              <div
+                key={tab.id}
+                onClick={() => onFocus(tab.id)}
+                className={cn(
+                  'group flex h-7 max-w-52 cursor-pointer items-center gap-1.5 rounded-md px-2 text-xs transition-colors',
+                  active
+                    ? 'bg-background shadow-sm'
+                    : 'text-muted-foreground hover:bg-background/60 hover:text-foreground',
+                )}
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{tab.title || 'Untitled'}</span>
+                <button
+                  className="ml-1 rounded p-0.5 opacity-0 transition-opacity hover:bg-accent group-hover:opacity-100"
+                  onClick={(e) => onClose(e, tab.id)}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            );
+          })}
 
-      <NewTabButton />
-    </div>
+          <NewTabButton />
+        </div>
+
+        {onStartSnip && (
+          <div className="flex shrink-0 items-center border-l border-border px-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={onStartSnip}
+                  disabled={tabs.length === 0}
+                >
+                  <Crop className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Snip region from reader (⇧⌘S)</TooltipContent>
+            </Tooltip>
+          </div>
+        )}
+      </div>
+    </TooltipProvider>
   );
 }
 

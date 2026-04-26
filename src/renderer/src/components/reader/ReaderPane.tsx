@@ -16,13 +16,17 @@ import {
 } from '@/lib/open-tab';
 import { toGithubWebUrl } from '@/lib/utils';
 
-export function ReaderPane(): JSX.Element {
+interface ReaderPaneProps {
+  onStartSnip?: () => void;
+}
+
+export function ReaderPane({ onStartSnip }: ReaderPaneProps): JSX.Element {
   const { tabs, activeTabId } = useTabsStore();
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null;
 
   return (
     <div data-rw-pane="reader" className="flex h-full w-full flex-col bg-background">
-      <TabBar />
+      <TabBar onStartSnip={onStartSnip} />
       <div className="relative flex-1 overflow-hidden">
         {tabs.length === 0 && <EmptyState />}
         {tabs.map((tab) => {

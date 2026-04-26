@@ -7,6 +7,10 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -19,10 +23,18 @@ import {
   ExternalLink,
   PanelRightOpen,
   PanelRightClose,
+  Sparkles,
+  TextSelect,
+  ScrollText,
+  Languages,
+  FileSearch,
+  BookOpen,
+  HelpCircle,
 } from 'lucide-react';
 import { useEditorStore } from '@/stores/editor';
 import { useWorkspaceStore } from '@/stores/workspace';
 import { useSettingsStore } from '@/stores/settings';
+import { useEditorCommandsStore } from '@/stores/editor-commands';
 import { docBasename } from '@/lib/doc-io';
 import { cn } from '@/lib/utils';
 
@@ -38,7 +50,9 @@ export function TitleBar({ onNewDoc, onOpenDoc }: TitleBarProps): JSX.Element {
   const known = useWorkspaceStore((s) => s.known);
   const setActive = useWorkspaceStore((s) => s.setActive);
   const sidebarVisible = useSettingsStore((s) => s.sidebarVisible);
+  const aiEnabled = useSettingsStore((s) => s.aiEnabled);
   const updateSettings = useSettingsStore((s) => s.update);
+  const requestAiCmd = useEditorCommandsStore((s) => s.request);
 
   const activeWorkspaceName =
     known.find((w) => w.path === active)?.name ?? (active ? docBasename(active) : '—');
@@ -176,6 +190,113 @@ export function TitleBar({ onNewDoc, onOpenDoc }: TitleBarProps): JSX.Element {
           className="flex items-center gap-0.5"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
+          {aiEnabled && (
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <Sparkles className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent>AI</TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="end" className="w-72">
+                <DropdownMenuLabel>AI</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Polish
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuPortal>
+                    <DropdownMenuSubContent className="w-56">
+                      <DropdownMenuItem
+                        onClick={() => requestAiCmd({ kind: 'polish', target: 'selection' })}
+                      >
+                        <TextSelect className="mr-2 h-4 w-4" /> Selection
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => requestAiCmd({ kind: 'polish', target: 'document' })}
+                      >
+                        <ScrollText className="mr-2 h-4 w-4" /> Whole document
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuPortal>
+                </DropdownMenuSub>
+
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Languages className="mr-2 h-4 w-4" />
+                    Translate
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuPortal>
+                    <DropdownMenuSubContent className="w-64">
+                      <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        Selection →
+                      </DropdownMenuLabel>
+                      <DropdownMenuItem
+                        onClick={() =>
+                          requestAiCmd({ kind: 'translate', target: 'selection', lang: 'en' })
+                        }
+                      >
+                        English
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() =>
+                          requestAiCmd({ kind: 'translate', target: 'selection', lang: 'zh' })
+                        }
+                      >
+                        中文
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        Whole document →
+                      </DropdownMenuLabel>
+                      <DropdownMenuItem
+                        onClick={() =>
+                          requestAiCmd({ kind: 'translate', target: 'document', lang: 'en' })
+                        }
+                      >
+                        English
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() =>
+                          requestAiCmd({ kind: 'translate', target: 'document', lang: 'zh' })
+                        }
+                      >
+                        中文
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuPortal>
+                </DropdownMenuSub>
+
+                <DropdownMenuItem onClick={() => requestAiCmd({ kind: 'summarize' })}>
+                  <FileSearch className="mr-2 h-4 w-4" />
+                  Summarize document
+                </DropdownMenuItem>
+
+                <DropdownMenuItem onClick={() => requestAiCmd({ kind: 'explain' })}>
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  Explain selection
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => requestAiCmd({ kind: 'interpret' })}>
+                  <HelpCircle className="mr-2 h-4 w-4" />
+                  <div className="flex flex-col">
+                    <span>Interpret with prompt…</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      Custom prompt, review response, then insert
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
           {onNewDoc && (
             <Tooltip>
               <TooltipTrigger asChild>

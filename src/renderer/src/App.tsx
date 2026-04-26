@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { TitleBar } from './components/layout/TitleBar';
 import { SplitView } from './components/layout/SplitView';
-import { ActionRail } from './components/layout/ActionRail';
 import { ReaderPane } from './components/reader/ReaderPane';
 import { EditorPane } from './components/editor/EditorPane';
 import { SnipOverlay } from './components/snip/SnipOverlay';
@@ -352,8 +351,7 @@ export function App(): JSX.Element {
         <SplitView
           sidebar={<DocsSidebar onSwitchDoc={onSwitchDoc} />}
           sidebarVisible={sidebarVisible}
-          rail={<ActionRail onStartSnip={onStartSnip} />}
-          left={<ReaderPane />}
+          left={<ReaderPane onStartSnip={onStartSnip} />}
           right={<EditorPane />}
         />
       </div>
