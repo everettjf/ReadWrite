@@ -36,6 +36,8 @@ export const IPC = {
   // Session-level persistence
   SESSION_LOAD: 'session:load',
   SESSION_SAVE: 'session:save',
+  TABS_SESSIONS_LOAD: 'session:tabs:load',
+  TABS_SESSIONS_SAVE: 'session:tabs:save',
 
   // Menu / shell helpers
   SHELL_OPEN_EXTERNAL: 'shell:open-external',

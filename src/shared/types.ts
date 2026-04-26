@@ -133,6 +133,24 @@ export interface WechatPublishResult {
   inlineImageCount: number;
 }
 
+/**
+ * Persisted reader-tab metadata. Reconstructed into live tabs on app boot
+ * and on workspace switch. Web tabs always recreate fresh WebContentsViews
+ * (Electron can't hibernate them); local-DOM tabs (PDF / EPUB / code) just
+ * restore their addressable resource.
+ */
+export type SavedTab =
+  | { kind: 'web' | 'github'; url: string; title?: string }
+  | { kind: 'pdf'; path: string; title?: string; page?: number }
+  | { kind: 'epub'; path: string; title?: string; location?: string | number }
+  | { kind: 'code'; rootPath: string; title?: string; activeFile?: string };
+
+export interface SavedTabSession {
+  tabs: SavedTab[];
+  /** Index into `tabs` of the active tab (if any). */
+  activeIndex?: number;
+}
+
 export interface KnownWorkspace {
   /** Absolute path to the workspace folder. */
   path: string;

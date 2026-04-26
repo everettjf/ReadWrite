@@ -16,6 +16,7 @@ import type {
   DocSummary,
   WechatPublishPayload,
   WechatPublishResult,
+  SavedTabSession,
 } from '@shared/types';
 
 interface SuggestedParent {
@@ -111,6 +112,11 @@ const api = {
   session: {
     load: <T = unknown>(): Promise<T | null> => ipcRenderer.invoke(IPC.SESSION_LOAD),
     save: (payload: unknown): Promise<void> => ipcRenderer.invoke(IPC.SESSION_SAVE, payload),
+    /** Per-workspace tab session map: { [workspacePath]: SavedTabSession } */
+    loadTabSessions: (): Promise<Record<string, SavedTabSession>> =>
+      ipcRenderer.invoke(IPC.TABS_SESSIONS_LOAD),
+    saveTabSessions: (map: Record<string, SavedTabSession>): Promise<void> =>
+      ipcRenderer.invoke(IPC.TABS_SESSIONS_SAVE, map),
   },
 
   shell: {

@@ -99,6 +99,11 @@ export function registerSettingsIpc(_ctx: IpcContext): void {
   ipcMain.handle(IPC.SESSION_LOAD, () => kvGet('session') ?? null);
   ipcMain.handle(IPC.SESSION_SAVE, (_e, payload: unknown) => kvSet('session', payload));
 
+  ipcMain.handle(IPC.TABS_SESSIONS_LOAD, () => kvGet('tabSessions') ?? {});
+  ipcMain.handle(IPC.TABS_SESSIONS_SAVE, (_e, map: Record<string, unknown>) => {
+    kvSet('tabSessions', map);
+  });
+
   ipcMain.handle(IPC.APP_GET_VERSION, () => app.getVersion());
 
   ipcMain.handle(IPC.APP_OPEN_SETTINGS, (event) => {

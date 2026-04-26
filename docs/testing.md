@@ -385,8 +385,9 @@ Use the checkboxes to track progress. If a test fails, the **Troubleshooting** s
   - Same workspace is active (whichever was last selected).
   - Same doc is reopened in the editor (per-workspace last-doc memory).
   - Settings (theme, font size, autosave debounce, sidebar visible) all survive.
-  - **Reader tabs are NOT restored** — that's currently expected (tab session restore is on the roadmap, not in v0.1.0).
+  - **Reader tabs are restored**, with the same active tab. Web/GitHub tabs reload (URL state survives, but cookies / scroll position are not preserved). PDF / EPUB / code tabs reopen at their last addressable resource.
   - Workspace list (multiple known workspaces) is intact.
+- [ ] Switch to another workspace, open different tabs, switch back — the original workspace's tab set comes back.
 
 ---
 

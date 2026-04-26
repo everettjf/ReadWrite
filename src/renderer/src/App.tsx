@@ -9,8 +9,10 @@ import { DocsSidebar } from './components/sidebar/DocsSidebar';
 import { WorkspacePicker } from './WorkspacePicker';
 import { useSettingsStore } from './stores/settings';
 import { useEditorStore } from './stores/editor';
+import { useTabsStore } from './stores/tabs';
 import { useWorkspaceStore } from './stores/workspace';
-import type { DocSummary } from '@shared/types';
+import { tabsToSession, restoreTabSession } from './lib/tab-session';
+import type { DocSummary, SavedTabSession } from '@shared/types';
 import { startSnip, finalizeSnip } from './lib/snip-runner';
 import {
   saveMarkdown,
@@ -56,11 +58,20 @@ export function App(): JSX.Element {
   // When the active workspace changes (e.g. switch from the title bar dropdown),
   // try to restore the last document opened in that workspace; otherwise reset
   // to the welcome content so the next user action creates a doc inside the
-  // new workspace.
+  // new workspace. Also restore that workspace's saved reader-tab session.
   useEffect(() => {
     if (!activeWorkspace) return;
     let cancelled = false;
     const editor = useEditorStore.getState();
+
+    // Restore tab session in parallel with the doc restore.
+    window.api.session
+      .loadTabSessions()
+      .then(async (map) => {
+        if (cancelled) return;
+        await restoreTabSession(map[activeWorkspace]);
+      })
+      .catch((err) => console.warn('[tab-session] restore failed:', err));
 
     const tryRestore = async (): Promise<void> => {
       const remembered = await window.api.workspace.getLastDoc(activeWorkspace).catch(() => null);
@@ -105,6 +116,40 @@ export function App(): JSX.Element {
       window.api.workspace.setLastDoc(activeWorkspace, state.path).catch(() => null);
     });
     return unsub;
+  }, [activeWorkspace]);
+
+  // Persist the active tab set per workspace, debounced.
+  useEffect(() => {
+    if (!activeWorkspace) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let lastSerialized = '';
+
+    const flush = async (): Promise<void> => {
+      const { tabs, activeTabId } = useTabsStore.getState();
+      const session = tabsToSession(tabs, activeTabId);
+      const serialized = JSON.stringify(session);
+      if (serialized === lastSerialized) return;
+      lastSerialized = serialized;
+      try {
+        const map = (await window.api.session.loadTabSessions()) as Record<string, SavedTabSession>;
+        map[activeWorkspace] = session;
+        await window.api.session.saveTabSessions(map);
+      } catch (err) {
+        console.warn('[tab-session] save failed:', err);
+      }
+    };
+
+    const unsub = useTabsStore.subscribe(() => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(flush, 600);
+    });
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      unsub();
+      // Best-effort flush on workspace switch / unmount.
+      flush().catch(() => null);
+    };
   }, [activeWorkspace]);
 
   // Auto-refresh the docs list when the workspace folder changes on disk
