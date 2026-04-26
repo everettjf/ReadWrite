@@ -88,27 +88,39 @@ async function pathExists(p: string): Promise<boolean> {
   }
 }
 
+/**
+ * Suggested parent locations for the workspace picker.
+ *
+ * Each suggestion ends in a "ReadWrite Notes" namespace folder so that all
+ * of the user's workspaces stay grouped instead of cluttering iCloud Drive
+ * (or ~/Documents) root. The namespace folder is created on demand by the
+ * WORKSPACE_CREATE handler's `mkdir -p`; the `exists` flag tracks whether
+ * the *parent* container is reachable, since the namespace itself may not
+ * exist yet on first run.
+ */
+const NAMESPACE = 'ReadWrite Notes';
+
 async function suggestedParents(): Promise<SuggestedParent[]> {
   const out: SuggestedParent[] = [];
   if (process.platform === 'darwin') {
-    const icloud = iCloudDocsPath();
+    const icloudRoot = iCloudDocsPath();
     out.push({
-      path: icloud,
+      path: join(icloudRoot, NAMESPACE),
       label: 'iCloud Drive',
-      exists: await pathExists(icloud),
-      hint: 'Syncs across your Macs and iOS devices via iCloud.',
+      exists: await pathExists(icloudRoot),
+      hint: `Syncs across your Macs and iOS devices via iCloud. We'll group all ReadWrite workspaces under a "${NAMESPACE}" folder.`,
     });
   }
   const docs = app.getPath('documents');
   out.push({
-    path: docs,
+    path: join(docs, NAMESPACE),
     label: 'Documents',
     exists: await pathExists(docs),
     hint: 'Local only.',
   });
   const home = homedir();
   out.push({
-    path: home,
+    path: join(home, NAMESPACE),
     label: 'Home folder',
     exists: await pathExists(home),
   });
