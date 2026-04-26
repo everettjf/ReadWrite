@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { cn, relativeTime } from '@/lib/utils';
 import { createNewDocument, openMarkdownAtPath, renameDocFolder, docBasename } from '@/lib/doc-io';
+import { RenameDocDialog } from '@/components/dialogs/RenameDocDialog';
 import type { DocSummary } from '@shared/types';
 
 interface DocsSidebarProps {
@@ -38,6 +39,7 @@ export function DocsSidebar({ onSwitchDoc }: DocsSidebarProps): JSX.Element {
 
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState('');
+  const [renameTarget, setRenameTarget] = useState<DocSummary | null>(null);
 
   const activeWorkspaceName =
     known.find((w) => w.path === active)?.name ?? (active ? docBasename(active) : '—');
@@ -65,6 +67,20 @@ export function DocsSidebar({ onSwitchDoc }: DocsSidebarProps): JSX.Element {
   const onOpen = async (doc: DocSummary): Promise<void> => {
     if (doc.path === editorPath) return;
     await onSwitchDoc(doc);
+  };
+
+  const onRenameConfirm = async (newName: string): Promise<void> => {
+    if (!renameTarget) return;
+    const newPath = await renameDocFolder(renameTarget.path, newName);
+    // If the renamed doc is the editor's active doc, reload it from the new path.
+    const editor = useEditorStore.getState();
+    if (editor.path === renameTarget.path) {
+      const reopened = await openMarkdownAtPath(newPath);
+      editor.setPath(reopened.path);
+      editor.setContent(reopened.content, { markDirty: false });
+    }
+    setRenameTarget(null);
+    await refreshDocs();
   };
 
   return (
@@ -131,13 +147,26 @@ export function DocsSidebar({ onSwitchDoc }: DocsSidebarProps): JSX.Element {
               const isActive = doc.path === editorPath;
               return (
                 <li key={doc.path}>
-                  <DocRow doc={doc} active={isActive} onOpen={onOpen} onChanged={refreshDocs} />
+                  <DocRow
+                    doc={doc}
+                    active={isActive}
+                    onOpen={onOpen}
+                    onChanged={refreshDocs}
+                    onStartRename={(d) => setRenameTarget(d)}
+                  />
                 </li>
               );
             })}
           </ul>
         )}
       </div>
+
+      <RenameDocDialog
+        open={!!renameTarget}
+        initialName={renameTarget?.name ?? ''}
+        onCancel={() => setRenameTarget(null)}
+        onConfirm={onRenameConfirm}
+      />
     </div>
   );
 }
@@ -147,27 +176,10 @@ interface DocRowProps {
   active: boolean;
   onOpen: (doc: DocSummary) => void;
   onChanged: () => Promise<void>;
+  onStartRename: (doc: DocSummary) => void;
 }
 
-function DocRow({ doc, active, onOpen, onChanged }: DocRowProps): JSX.Element {
-  const handleRename = async (): Promise<void> => {
-    const next = window.prompt('Rename document', doc.name);
-    if (!next || next === doc.name) return;
-    try {
-      const newPath = await renameDocFolder(doc.path, next);
-      // If this was the active editor, refresh content to point at the new path.
-      const editor = useEditorStore.getState();
-      if (editor.path === doc.path) {
-        const reopened = await openMarkdownAtPath(newPath);
-        editor.setPath(reopened.path);
-        editor.setContent(reopened.content, { markDirty: false });
-      }
-      await onChanged();
-    } catch (err) {
-      alert(`Rename failed: ${(err as Error).message}`);
-    }
-  };
-
+function DocRow({ doc, active, onOpen, onChanged, onStartRename }: DocRowProps): JSX.Element {
   const handleReveal = (): void => {
     window.api.workspace.revealInFinder(doc.path).catch(() => null);
   };
@@ -219,7 +231,7 @@ function DocRow({ doc, active, onOpen, onChanged }: DocRowProps): JSX.Element {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onSelect={handleRename}>
+          <DropdownMenuItem onSelect={() => onStartRename(doc)}>
             <Pencil className="mr-2 h-3.5 w-3.5" /> Rename
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={handleReveal}>
