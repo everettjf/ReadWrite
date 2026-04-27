@@ -43,6 +43,8 @@ const api = {
     goBack: (id: string): Promise<void> => ipcRenderer.invoke(IPC.TAB_GO_BACK, id),
     goForward: (id: string): Promise<void> => ipcRenderer.invoke(IPC.TAB_GO_FORWARD, id),
     reload: (id: string): Promise<void> => ipcRenderer.invoke(IPC.TAB_RELOAD, id),
+    extractWebText: (id: string): Promise<{ title: string; source: string; text: string } | null> =>
+      ipcRenderer.invoke(IPC.TAB_EXTRACT_WEB_TEXT, id),
     onStateChange: (
       listener: (state: {
         id: string;

@@ -9,6 +9,7 @@ export const IPC = {
   TAB_GO_FORWARD: 'tab:go-forward',
   TAB_RELOAD: 'tab:reload',
   TAB_SET_VISIBILITY: 'tab:set-visibility',
+  TAB_EXTRACT_WEB_TEXT: 'tab:extract-web-text',
 
   // Broadcast from main → renderer
   TAB_STATE_CHANGED: 'tab:state-changed',

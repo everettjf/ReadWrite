@@ -40,6 +40,10 @@ export function registerReaderIpc(ctx: IpcContext): void {
     ctx.getTabManager().reload(id);
   });
 
+  ipcMain.handle(IPC.TAB_EXTRACT_WEB_TEXT, async (_e, id: string) => {
+    return ctx.getTabManager().extractWebText(id);
+  });
+
   ipcMain.handle(IPC.SHELL_OPEN_EXTERNAL, async (_e, url: string) => {
     await shell.openExternal(url);
   });

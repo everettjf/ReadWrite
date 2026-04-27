@@ -176,6 +176,52 @@ export class TabManager {
     return file.toDataURL();
   }
 
+  /**
+   * Extract plain article text from a web/github tab. Uses a small DOM
+   * heuristic (prefer <article>/<main>, strip nav/aside/footer/scripts)
+   * — keeps payload manageable when feeding the result to an LLM.
+   * Avoid pulling in a Readability dep just for this; the heuristic is
+   * good enough for most articles and we can swap in @mozilla/readability
+   * later if quality matters.
+   */
+  async extractWebText(
+    id: string,
+  ): Promise<{ title: string; source: string; text: string } | null> {
+    const tab = this.tabs.get(id);
+    if (!tab) return null;
+    // Run in the page's main world. Returns a JSON string we parse here.
+    const script = `(function () {
+      try {
+        var article = document.querySelector('article, main, [role="main"]');
+        var root = article || document.body;
+        var clone = root.cloneNode(true);
+        var stripSel = 'nav, aside, footer, header, script, style, noscript, iframe, .nav, .header, .footer, .sidebar, [aria-hidden="true"], [role="navigation"], [role="banner"], [role="contentinfo"]';
+        clone.querySelectorAll(stripSel).forEach(function (n) { n.remove(); });
+        var text = clone.innerText || clone.textContent || '';
+        return JSON.stringify({
+          title: document.title || '',
+          url: location.href,
+          text: text.replace(/\\n{3,}/g, '\\n\\n').trim(),
+        });
+      } catch (err) {
+        return JSON.stringify({ error: String(err && err.message || err) });
+      }
+    })();`;
+    const json = (await tab.view.webContents.executeJavaScript(script, true)) as string;
+    let parsed: { title?: string; url?: string; text?: string; error?: string };
+    try {
+      parsed = JSON.parse(json);
+    } catch {
+      throw new Error('Reader extraction returned invalid JSON.');
+    }
+    if (parsed.error) throw new Error(`Reader extraction failed: ${parsed.error}`);
+    return {
+      title: parsed.title ?? '',
+      source: parsed.url ?? tab.url,
+      text: parsed.text ?? '',
+    };
+  }
+
   destroyAll(): void {
     for (const id of [...this.tabs.keys()]) {
       this.closeTab(id);
