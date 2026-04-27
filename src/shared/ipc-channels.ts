@@ -71,6 +71,9 @@ export const IPC = {
   // AI
   AI_COMPLETE: 'ai:complete',
 
+  // AI CLI (external Claude Code / Codex command)
+  AI_CLI_DETECT: 'ai-cli:detect',
+
   // WeChat (scaffold)
   WECHAT_TEST_CREDENTIALS: 'wechat:test-credentials',
   WECHAT_PUBLISH: 'wechat:publish',

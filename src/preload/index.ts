@@ -17,6 +17,8 @@ import type {
   WechatPublishPayload,
   WechatPublishResult,
   SavedTabSession,
+  CliDetectRequest,
+  CliDetectResponse,
 } from '@shared/types';
 
 interface SuggestedParent {
@@ -175,6 +177,11 @@ const api = {
   ai: {
     complete: (req: AICompletionRequest): Promise<AICompletionResult> =>
       ipcRenderer.invoke(IPC.AI_COMPLETE, req),
+  },
+
+  aiCli: {
+    detect: (req: CliDetectRequest): Promise<CliDetectResponse> =>
+      ipcRenderer.invoke(IPC.AI_CLI_DETECT, req),
   },
 
   wechat: {

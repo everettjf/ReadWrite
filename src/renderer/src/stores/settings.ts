@@ -22,6 +22,7 @@ const DEFAULTS: AppSettings = {
   aiApiKey: '',
   aiModel: 'gpt-4o-mini',
   aiSystemPrompt: '',
+  aiCliProvider: 'none',
   wechatExportTheme: 'default',
   autosaveDebounceMs: 1500,
   sidebarVisible: true,

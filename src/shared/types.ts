@@ -92,6 +92,14 @@ export interface AppSettings {
   aiModel: string;
   aiSystemPrompt: string;
 
+  // External AI CLI (used for long-form generation like the blog feature)
+  /** Which external CLI to use for long-form tasks. 'none' disables CLI generation. */
+  aiCliProvider: 'none' | 'claude-code' | 'codex';
+  /** Optional absolute path to the claude binary; falls back to PATH lookup. */
+  aiCliClaudePath?: string;
+  /** Optional absolute path to the codex binary; falls back to PATH lookup. */
+  aiCliCodexPath?: string;
+
   // WeChat 公众号
   wechatAppId?: string;
   wechatAppSecret?: string;
@@ -178,6 +186,22 @@ export interface AICompletionResult {
   text: string;
   model: string;
   usage?: { promptTokens?: number; completionTokens?: number; totalTokens?: number };
+}
+
+export interface CliDetectRequest {
+  provider: 'claude-code' | 'codex';
+  /** Optional explicit path to the binary; overrides PATH lookup. */
+  pathOverride?: string;
+}
+
+export interface CliDetectResponse {
+  available: boolean;
+  /** Version line as printed by the CLI (best-effort parse). */
+  version?: string;
+  /** The resolved or supplied binary path. */
+  resolvedPath?: string;
+  /** Human-readable error if not available. */
+  error?: string;
 }
 
 export interface ImageSaveOptions {

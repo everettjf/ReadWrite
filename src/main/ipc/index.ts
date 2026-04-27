@@ -6,6 +6,7 @@ import { registerFsIpc } from './fs';
 import { registerScreenshotIpc } from './screenshot';
 import { registerSettingsIpc } from './settings';
 import { registerAiIpc } from './ai';
+import { registerCliIpc } from './cli';
 import { registerWechatIpc } from './wechat';
 import { registerWorkspaceIpc } from './workspace';
 
@@ -21,6 +22,7 @@ export function registerAllIpcHandlers(ctx: IpcContext): void {
   registerScreenshotIpc(ctx);
   registerSettingsIpc(ctx);
   registerAiIpc(ctx);
+  registerCliIpc(ctx);
   registerWechatIpc(ctx);
   registerWorkspaceIpc(ctx);
 }

@@ -27,6 +27,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   aiSystemPrompt:
     'You are a precise Markdown copy-editor. Improve clarity and flow without changing meaning, code, or links. Return only the revised Markdown — no commentary.',
 
+  aiCliProvider: 'none',
+
   wechatExportTheme: 'default',
 
   autosaveDebounceMs: 1500,

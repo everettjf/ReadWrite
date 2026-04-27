@@ -4,6 +4,8 @@ import { Section, Field } from './Field';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
+import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import type { CliDetectResponse } from '@shared/types';
 
 export function AIPanel(): JSX.Element {
   const aiEnabled = useSettingsStore((s) => s.aiEnabled);
@@ -11,11 +13,39 @@ export function AIPanel(): JSX.Element {
   const aiApiKey = useSettingsStore((s) => s.aiApiKey);
   const aiModel = useSettingsStore((s) => s.aiModel);
   const aiSystemPrompt = useSettingsStore((s) => s.aiSystemPrompt);
+  const aiCliProvider = useSettingsStore((s) => s.aiCliProvider);
+  const aiCliClaudePath = useSettingsStore((s) => s.aiCliClaudePath);
+  const aiCliCodexPath = useSettingsStore((s) => s.aiCliCodexPath);
   const update = useSettingsStore((s) => s.update);
 
   const [showKey, setShowKey] = useState(false);
   const [testStatus, setTestStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [testing, setTesting] = useState(false);
+
+  const [cliDetecting, setCliDetecting] = useState(false);
+  const [cliResult, setCliResult] = useState<CliDetectResponse | null>(null);
+
+  const onDetectCli = async (): Promise<void> => {
+    if (aiCliProvider === 'none') return;
+    setCliDetecting(true);
+    setCliResult(null);
+    try {
+      const result = await window.api.aiCli.detect({
+        provider: aiCliProvider,
+        pathOverride:
+          aiCliProvider === 'claude-code'
+            ? aiCliClaudePath
+            : aiCliProvider === 'codex'
+              ? aiCliCodexPath
+              : undefined,
+      });
+      setCliResult(result);
+    } catch (err) {
+      setCliResult({ available: false, error: (err as Error).message });
+    } finally {
+      setCliDetecting(false);
+    }
+  };
 
   const onTest = async (): Promise<void> => {
     setTesting(true);
@@ -120,6 +150,103 @@ export function AIPanel(): JSX.Element {
             )}
           </div>
         </Field>
+      </Section>
+
+      <Section title="External AI CLI (long-form generation)">
+        <Field
+          label="Provider"
+          description="Used by long-running tasks like 'Generate from reader'. The short-form actions above (Polish/Translate/etc.) keep using the API."
+          htmlFor="aiCliProvider"
+        >
+          <select
+            id="aiCliProvider"
+            value={aiCliProvider}
+            onChange={(e) =>
+              update({ aiCliProvider: e.target.value as 'none' | 'claude-code' | 'codex' })
+            }
+            className="flex h-9 w-72 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <option value="none">Disabled</option>
+            <option value="claude-code">Claude Code</option>
+            <option value="codex">Codex (experimental)</option>
+          </select>
+        </Field>
+
+        {aiCliProvider === 'claude-code' && (
+          <Field
+            label="Claude binary path (optional)"
+            description={
+              "Leave blank to look up `claude` on your shell PATH. Set an absolute path if it's installed somewhere unusual."
+            }
+            htmlFor="aiCliClaudePath"
+          >
+            <Input
+              id="aiCliClaudePath"
+              value={aiCliClaudePath ?? ''}
+              onChange={(e) => update({ aiCliClaudePath: e.target.value })}
+              placeholder="/usr/local/bin/claude"
+            />
+          </Field>
+        )}
+
+        {aiCliProvider === 'codex' && (
+          <Field
+            label="Codex binary path (optional)"
+            description="Leave blank to look up `codex` on your shell PATH."
+            htmlFor="aiCliCodexPath"
+          >
+            <Input
+              id="aiCliCodexPath"
+              value={aiCliCodexPath ?? ''}
+              onChange={(e) => update({ aiCliCodexPath: e.target.value })}
+              placeholder="/usr/local/bin/codex"
+            />
+          </Field>
+        )}
+
+        {aiCliProvider !== 'none' && (
+          <Field label="Detection" inline>
+            <div className="flex flex-col items-end gap-2">
+              <Button onClick={onDetectCli} disabled={cliDetecting}>
+                {cliDetecting ? (
+                  <>
+                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                    Probing…
+                  </>
+                ) : (
+                  'Detect CLI'
+                )}
+              </Button>
+              {cliResult && (
+                <div
+                  className={`flex items-start gap-1.5 text-xs ${
+                    cliResult.available ? 'text-emerald-500' : 'text-destructive'
+                  }`}
+                >
+                  {cliResult.available ? (
+                    <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  ) : (
+                    <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  )}
+                  <div className="flex flex-col text-right">
+                    {cliResult.available ? (
+                      <>
+                        <span>Found: {cliResult.version ?? '(version not parsed)'}</span>
+                        {cliResult.resolvedPath && (
+                          <span className="font-mono text-[10px] text-muted-foreground">
+                            {cliResult.resolvedPath}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span>{cliResult.error ?? 'Not available'}</span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </Field>
+        )}
       </Section>
     </div>
   );
