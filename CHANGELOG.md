@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _Nothing yet._
 
+## [0.1.1] — 2026-04-27
+
+### Added
+
+- **i18n,ui**: add zh/en, name-first workspace dialog, brand polish (a611a22)
+
+### Fixed
+
+- **ci**: exclude internal NSIS helpers from release uploads (aec73c0)
+
 ## [0.1.0] — 2026-04-25
 
 The first published release of ReadWrite — a side-by-side reader + Markdown editor with workspaces, screenshots, AI actions, and WeChat 公众号 publishing.
