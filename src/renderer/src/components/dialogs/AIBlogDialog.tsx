@@ -35,8 +35,10 @@ interface AIBlogDialogProps {
 type OutputTarget = 'new-doc' | 'append' | 'replace';
 
 interface Progress {
+  /** Full streaming output accumulated so far. */
+  total: string;
+  /** Char count — derived from total but kept handy for the header. */
   chars: number;
-  tail: string;
 }
 
 type Phase =
@@ -97,7 +99,7 @@ export function AIBlogDialog({ open, onClose }: AIBlogDialogProps): JSX.Element 
     const off = window.api.aiCli.onProgress((evt) => {
       setPhase((prev) =>
         prev.kind === 'generating' && prev.jobId === evt.jobId
-          ? { ...prev, progress: { chars: evt.chars, tail: evt.tail } }
+          ? { ...prev, progress: { total: evt.total, chars: evt.chars } }
           : prev,
       );
     });
@@ -142,7 +144,7 @@ export function AIBlogDialog({ open, onClose }: AIBlogDialogProps): JSX.Element 
       kind: 'generating',
       source: phase.source,
       jobId,
-      progress: { chars: 0, tail: '' },
+      progress: { total: '', chars: 0 },
     });
 
     try {
@@ -369,23 +371,31 @@ export function AIBlogDialog({ open, onClose }: AIBlogDialogProps): JSX.Element 
             )}
 
             {phase.kind === 'generating' && (
-              <div className="space-y-1.5 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs">
-                <div className="flex items-center gap-2 text-muted-foreground">
+              <div className="space-y-2 rounded-md border border-border bg-muted/30 px-3 py-2">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   <span>
-                    Generating with Claude…{' '}
+                    Streaming
                     {phase.progress.chars > 0 ? (
-                      <span className="font-mono text-foreground">
-                        {phase.progress.chars.toLocaleString()} chars
-                      </span>
+                      <>
+                        {' · '}
+                        <span className="font-mono text-foreground">
+                          {phase.progress.chars.toLocaleString()} chars
+                        </span>
+                      </>
                     ) : (
-                      <span className="opacity-70">waiting for first output…</span>
+                      '…'
                     )}
                   </span>
                 </div>
-                {phase.progress.tail && (
-                  <div className="line-clamp-2 break-words font-mono text-[10px] text-muted-foreground/80">
-                    …{phase.progress.tail}
+                {phase.progress.total ? (
+                  <pre className="max-h-[40vh] overflow-auto whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-foreground/85">
+                    {phase.progress.total}
+                    <span className="ml-0.5 inline-block h-3 w-1.5 animate-pulse bg-foreground/60 align-middle" />
+                  </pre>
+                ) : (
+                  <div className="text-xs italic text-muted-foreground">
+                    Waiting for first token…
                   </div>
                 )}
               </div>

@@ -2,10 +2,12 @@ import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { envWithPath } from './resolve-path';
 
 export interface CliProgressEvent {
-  /** Total characters of generated output seen so far. */
+  /** Text added since the previous event (one stdout chunk). */
+  delta: string;
+  /** Full text accumulated so far. */
+  total: string;
+  /** Total character count — kept for backwards compat / logging. */
   chars: number;
-  /** Last 200 chars of stdout — for live preview. */
-  tail: string;
 }
 
 export interface CliRunOptions {
@@ -89,9 +91,10 @@ export async function runCliProcess(
     }
 
     proc.stdout.on('data', (chunk: Buffer) => {
-      stdout += chunk.toString('utf8');
+      const delta = chunk.toString('utf8');
+      stdout += delta;
       if (opts.onProgress) {
-        opts.onProgress({ chars: stdout.length, tail: stdout.slice(-200) });
+        opts.onProgress({ delta, total: stdout, chars: stdout.length });
       }
     });
     proc.stderr.on('data', (chunk: Buffer) => {

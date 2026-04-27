@@ -208,7 +208,7 @@ const api = {
       ipcRenderer.invoke(IPC.AI_CLI_GENERATE, req),
     cancel: (jobId: string): Promise<boolean> => ipcRenderer.invoke(IPC.AI_CLI_CANCEL, jobId),
     onProgress: (
-      listener: (evt: { jobId: string; chars: number; tail: string }) => void,
+      listener: (evt: { jobId: string; delta: string; total: string; chars: number }) => void,
     ): (() => void) => {
       const handler = (_e: Electron.IpcRendererEvent, payload: Parameters<typeof listener>[0]) =>
         listener(payload);
