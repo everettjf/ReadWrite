@@ -130,36 +130,6 @@ The CLI runs in a **no-tools / sandboxed mode** so prompt-injected reader conten
 
 ---
 
-## Build distributables
-
-For the current host:
-
-```bash
-./deploy.sh                  # typecheck + lint + test + dist for the host
-```
-
-Or run `electron-builder` directly:
-
-```bash
-pnpm dist:mac                # .dmg (x64 + arm64) — must run on macOS
-pnpm dist:win                # NSIS installer    — best on Windows (cross-builds need Wine)
-pnpm dist:linux              # AppImage + .deb   — must run on Linux
-```
-
-Output lands in `release/<version>/`.
-
-### Cross-platform via GitHub Actions
-
-```bash
-./deploy.sh release <version>  # e.g. 0.2.0 — tags v0.2.0, pushes, triggers CI
-```
-
-The `release.yml` workflow builds .dmg / .exe / .AppImage / .deb on a three-OS matrix and uploads everything to a new GitHub Release. Notes are auto-extracted from the matching `## [<version>]` block in `CHANGELOG.md`.
-
-> **Heads-up**: artifacts ship **unsigned** today. macOS users open with right-click → Open the first time; Windows users acknowledge the SmartScreen warning. Real Apple Developer + Authenticode signing is on the roadmap.
-
----
-
 ## Architecture (in one minute)
 
 | Process  | Responsibility                                                                                                 |
@@ -247,9 +217,12 @@ PRs welcome. The basics:
 - Branch off `main`. Use [Conventional Commits](https://www.conventionalcommits.org/).
 - `pnpm typecheck && pnpm lint && pnpm test && pnpm build` must all pass; CI runs them on every PR.
 - For non-trivial changes, open an issue first so we can agree on direction.
-- The `docs/testing.md` black-box test plan is the authoritative manual-testing checklist for releases — running through it on macOS catches most regressions.
 
-Full guide: [CONTRIBUTING.md](CONTRIBUTING.md).
+Reference docs:
+
+- [CONTRIBUTING.md](CONTRIBUTING.md) — code style, commit conventions, PR norms.
+- [docs/develop.md](docs/develop.md) — building distributables, cutting releases, signing notes, troubleshooting.
+- [docs/testing.md](docs/testing.md) — black-box test plan for manual QA before a release.
 
 ---
 
