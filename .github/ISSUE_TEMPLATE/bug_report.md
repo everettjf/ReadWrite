@@ -23,10 +23,17 @@ assignees: ''
 ## Environment
 
 - OS + version:
-- ReadWrite version:
-- Node version:
-- Installed from: (dmg / nsis / source)
+- ReadWrite version: <!-- Settings → About -->
+- Installed from: (dmg / nsis / appimage / deb / source)
+- Node version: <!-- only needed if you built from source -->
+- (If AI-related) Provider:
+  <!-- Claude Code / Codex / Gemini / OpenCode / Custom / OpenAI-compatible API. CLI version helps. -->
 
 ## Logs / screenshots
 
-<!-- Attach DevTools output if relevant (View → Toggle Developer Tools). -->
+<!--
+- For runtime errors, open DevTools (Cmd+Option+I on macOS, Ctrl+Shift+I elsewhere)
+  → Console and paste anything red.
+- For AI CLI failures, paste the stderr line from the dialog's error pill.
+- Screenshots: drag-drop into this textarea.
+-->

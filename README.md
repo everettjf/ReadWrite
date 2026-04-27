@@ -16,6 +16,21 @@ The non-obvious bit: long-form AI generation runs through **your locally-install
 
 > **Status**: early-stage OSS. The macOS path is the most-used; Windows / Linux are built by CI but get less manual testing. PRs welcome.
 
+<!--
+Screenshots — drop PNGs into docs/screenshots/ then uncomment.
+Suggested shots:
+  1. Main window with reader (web or PDF) on the left, editor with notes on the right.
+  2. Generate from reader dialog mid-stream — shows the live char counter / tail preview.
+  3. Settings → AI panel showing the External AI CLI section.
+
+<p align="center">
+  <img src="docs/screenshots/main.png" alt="ReadWrite main window — reader + editor side by side" width="900" />
+</p>
+<p align="center">
+  <img src="docs/screenshots/generate-from-reader.png" alt="Generate from reader dialog mid-stream" width="700" />
+</p>
+-->
+
 ---
 
 ## Why ReadWrite
@@ -136,10 +151,10 @@ Output lands in `release/<version>/`.
 ### Cross-platform via GitHub Actions
 
 ```bash
-./deploy.sh release 0.2.0    # tags v0.2.0, pushes, triggers CI
+./deploy.sh release 0.1.0    # tags v0.1.0, pushes, triggers CI
 ```
 
-The `release.yml` workflow builds .dmg / .exe / .AppImage / .deb on a three-OS matrix and uploads everything to a new GitHub Release. Notes are auto-extracted from the matching `## [0.2.0]` block in `CHANGELOG.md`.
+The `release.yml` workflow builds .dmg / .exe / .AppImage / .deb on a three-OS matrix and uploads everything to a new GitHub Release. Notes are auto-extracted from the matching `## [0.1.0]` block in `CHANGELOG.md`.
 
 > **Heads-up**: artifacts ship **unsigned** today. macOS users open with right-click → Open the first time; Windows users acknowledge the SmartScreen warning. Real Apple Developer + Authenticode signing is on the roadmap.
 
