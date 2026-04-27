@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { envWithPath } from './resolve-path';
 
-export type CliProvider = 'claude-code' | 'codex';
+export type CliProvider = 'claude-code' | 'codex' | 'gemini' | 'opencode';
 
 export interface CliDetectResult {
   available: boolean;
@@ -16,6 +16,8 @@ export interface CliDetectResult {
 const COMMAND_FOR: Record<CliProvider, string> = {
   'claude-code': 'claude',
   codex: 'codex',
+  gemini: 'gemini',
+  opencode: 'opencode',
 };
 
 /**

@@ -17,6 +17,9 @@ export function AIPanel(): JSX.Element {
   const aiCliProvider = useSettingsStore((s) => s.aiCliProvider);
   const aiCliClaudePath = useSettingsStore((s) => s.aiCliClaudePath);
   const aiCliCodexPath = useSettingsStore((s) => s.aiCliCodexPath);
+  const aiCliGeminiPath = useSettingsStore((s) => s.aiCliGeminiPath);
+  const aiCliOpencodePath = useSettingsStore((s) => s.aiCliOpencodePath);
+  const aiCliCustomCommand = useSettingsStore((s) => s.aiCliCustomCommand);
   const aiCustomStyles = useSettingsStore((s) => s.aiCustomStyles);
   const aiCustomTemplates = useSettingsStore((s) => s.aiCustomTemplates);
   const update = useSettingsStore((s) => s.update);
@@ -29,18 +32,28 @@ export function AIPanel(): JSX.Element {
   const [cliResult, setCliResult] = useState<CliDetectResponse | null>(null);
 
   const onDetectCli = async (): Promise<void> => {
-    if (aiCliProvider === 'none') return;
+    if (
+      aiCliProvider !== 'claude-code' &&
+      aiCliProvider !== 'codex' &&
+      aiCliProvider !== 'gemini' &&
+      aiCliProvider !== 'opencode'
+    ) {
+      return;
+    }
     setCliDetecting(true);
     setCliResult(null);
     try {
+      const pathOverride =
+        aiCliProvider === 'claude-code'
+          ? aiCliClaudePath
+          : aiCliProvider === 'codex'
+            ? aiCliCodexPath
+            : aiCliProvider === 'gemini'
+              ? aiCliGeminiPath
+              : aiCliOpencodePath;
       const result = await window.api.aiCli.detect({
         provider: aiCliProvider,
-        pathOverride:
-          aiCliProvider === 'claude-code'
-            ? aiCliClaudePath
-            : aiCliProvider === 'codex'
-              ? aiCliCodexPath
-              : undefined,
+        pathOverride,
       });
       setCliResult(result);
     } catch (err) {
@@ -165,13 +178,24 @@ export function AIPanel(): JSX.Element {
             id="aiCliProvider"
             value={aiCliProvider}
             onChange={(e) =>
-              update({ aiCliProvider: e.target.value as 'none' | 'claude-code' | 'codex' })
+              update({
+                aiCliProvider: e.target.value as
+                  | 'none'
+                  | 'claude-code'
+                  | 'codex'
+                  | 'gemini'
+                  | 'opencode'
+                  | 'custom',
+              })
             }
             className="flex h-9 w-72 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             <option value="none">Disabled</option>
-            <option value="claude-code">Claude Code</option>
+            <option value="claude-code">Claude Code (recommended)</option>
             <option value="codex">Codex (experimental)</option>
+            <option value="gemini">Gemini CLI (experimental)</option>
+            <option value="opencode">OpenCode (experimental)</option>
+            <option value="custom">Custom command…</option>
           </select>
         </Field>
 
@@ -195,7 +219,7 @@ export function AIPanel(): JSX.Element {
         {aiCliProvider === 'codex' && (
           <Field
             label="Codex binary path (optional)"
-            description="Leave blank to look up `codex` on your shell PATH."
+            description="Leave blank to look up `codex` on PATH. Invoked as `codex exec --skip-git-repo-check '<prompt>'`."
             htmlFor="aiCliCodexPath"
           >
             <Input
@@ -207,7 +231,54 @@ export function AIPanel(): JSX.Element {
           </Field>
         )}
 
-        {aiCliProvider !== 'none' && (
+        {aiCliProvider === 'gemini' && (
+          <Field
+            label="Gemini binary path (optional)"
+            description="Leave blank to look up `gemini` on PATH. Invoked as `gemini -p` with the prompt on stdin."
+            htmlFor="aiCliGeminiPath"
+          >
+            <Input
+              id="aiCliGeminiPath"
+              value={aiCliGeminiPath ?? ''}
+              onChange={(e) => update({ aiCliGeminiPath: e.target.value })}
+              placeholder="/usr/local/bin/gemini"
+            />
+          </Field>
+        )}
+
+        {aiCliProvider === 'opencode' && (
+          <Field
+            label="OpenCode binary path (optional)"
+            description="Leave blank to look up `opencode` on PATH. Invoked as `opencode run` with the prompt on stdin."
+            htmlFor="aiCliOpencodePath"
+          >
+            <Input
+              id="aiCliOpencodePath"
+              value={aiCliOpencodePath ?? ''}
+              onChange={(e) => update({ aiCliOpencodePath: e.target.value })}
+              placeholder="/usr/local/bin/opencode"
+            />
+          </Field>
+        )}
+
+        {aiCliProvider === 'custom' && (
+          <Field
+            label="Command template"
+            description={
+              "Whitespace-split into argv. Use the literal token `{prompt}` to place the prompt as an argument; otherwise the prompt is sent on stdin. Paths with spaces aren't supported — wrap in a shell script if needed."
+            }
+            htmlFor="aiCliCustomCommand"
+          >
+            <Input
+              id="aiCliCustomCommand"
+              value={aiCliCustomCommand ?? ''}
+              onChange={(e) => update({ aiCliCustomCommand: e.target.value })}
+              placeholder='claude -p --allowedTools ""'
+            />
+          </Field>
+        )}
+
+        {aiCliProvider !== 'none' && aiCliProvider !== 'custom' && (
           <Field label="Detection" inline>
             <div className="flex flex-col items-end gap-2">
               <Button onClick={onDetectCli} disabled={cliDetecting}>

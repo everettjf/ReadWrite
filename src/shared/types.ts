@@ -94,11 +94,17 @@ export interface AppSettings {
 
   // External AI CLI (used for long-form generation like the blog feature)
   /** Which external CLI to use for long-form tasks. 'none' disables CLI generation. */
-  aiCliProvider: 'none' | 'claude-code' | 'codex';
+  aiCliProvider: 'none' | 'claude-code' | 'codex' | 'gemini' | 'opencode' | 'custom';
   /** Optional absolute path to the claude binary; falls back to PATH lookup. */
   aiCliClaudePath?: string;
   /** Optional absolute path to the codex binary; falls back to PATH lookup. */
   aiCliCodexPath?: string;
+  /** Optional absolute path to the gemini binary. */
+  aiCliGeminiPath?: string;
+  /** Optional absolute path to the opencode binary. */
+  aiCliOpencodePath?: string;
+  /** Full command template for the 'custom' provider, e.g. "my-cli --print {prompt}". */
+  aiCliCustomCommand?: string;
 
   /** User-defined writing styles for the "Generate from reader" flow. */
   aiCustomStyles?: AIPresetEntry[];
@@ -206,7 +212,7 @@ export interface AICompletionResult {
 }
 
 export interface CliDetectRequest {
-  provider: 'claude-code' | 'codex';
+  provider: 'claude-code' | 'codex' | 'gemini' | 'opencode';
   /** Optional explicit path to the binary; overrides PATH lookup. */
   pathOverride?: string;
 }
