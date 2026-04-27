@@ -27,6 +27,7 @@ import {
   FileSearch,
   BookOpen,
   HelpCircle,
+  Wand2,
 } from 'lucide-react';
 import { useEditorStore } from '@/stores/editor';
 import { useWorkspaceStore } from '@/stores/workspace';
@@ -112,6 +113,18 @@ export function TitleBar({ onNewDoc, onOpenDoc }: TitleBarProps): JSX.Element {
               </Tooltip>
               <DropdownMenuContent align="end" className="w-72">
                 <DropdownMenuLabel>AI</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+
+                <DropdownMenuItem onClick={() => requestAiCmd({ kind: 'blog' })}>
+                  <Wand2 className="mr-2 h-4 w-4" />
+                  <div className="flex flex-col">
+                    <span>Generate from reader…</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      Uses external Claude CLI; pick style + template, review settings, then run
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+
                 <DropdownMenuSeparator />
 
                 <DropdownMenuSub>

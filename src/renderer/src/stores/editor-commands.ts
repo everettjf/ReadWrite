@@ -13,7 +13,8 @@ export type AiRequest =
   | { kind: 'translate'; target: AiTarget; lang: 'en' | 'zh' }
   | { kind: 'summarize' }
   | { kind: 'explain' }
-  | { kind: 'interpret' };
+  | { kind: 'interpret' }
+  | { kind: 'blog' };
 
 interface EditorCommandsState {
   pending: AiRequest | null;
