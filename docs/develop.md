@@ -97,47 +97,69 @@ AppImage and .deb both build natively. No signing concerns.
 
 ## Cutting a release
 
-1.  **Bump the version** without creating a tag (the deploy script does
-    that):
+One command, end-to-end:
 
-    ```bash
-    pnpm version <version> --no-git-tag-version
-    ```
+```bash
+./deploy.sh release           # auto-bump patch (e.g. 0.1.0 → 0.1.1)
+./deploy.sh release patch     # same — explicit
+./deploy.sh release minor     # 0.1.0 → 0.2.0
+./deploy.sh release major     # 0.1.0 → 1.0.0
+./deploy.sh release 0.5.0     # explicit version
+```
 
-2.  **Update CHANGELOG.md** — move accumulated `## [Unreleased]` entries
-    into a new `## [<version>] — YYYY-MM-DD` block. Leave `Unreleased`
-    empty.
+What happens, in order:
 
-3.  **Commit + push** the bump:
+1. Resolves the target version (auto-bump from `package.json` or uses
+   the explicit one you passed).
+2. Refuses if the working tree is dirty, the target tag already
+   exists, or there are no commits since the last tag.
+3. Prints a plan (version, tag, commits since last tag) and prompts
+   `Continue? [y/N]`. Skip the prompt with `YES=1 ./deploy.sh release`.
+4. Runs the quality gate (`pnpm typecheck && pnpm lint && pnpm test &&
+pnpm build`). Skip with `SKIP_CHECKS=1`.
+5. Bumps `package.json` via `pnpm version --no-git-tag-version`.
+6. Generates a `## [<version>] — YYYY-MM-DD` block in `CHANGELOG.md`
+   from `git log <last-tag>..HEAD`, grouped by Conventional Commits
+   type (`feat` → Added, `fix` → Fixed, `refactor`/`perf` → Changed;
+   the rest is omitted). Inserts it right after `## [Unreleased]`.
+   Implementation: [`scripts/cut-changelog.mjs`](../scripts/cut-changelog.mjs).
+7. `git commit` (`chore: cut v<version>`) + `git push`.
+8. Creates an annotated `v<version>` tag and pushes it.
+9. GitHub Actions matrix kicks off (`.github/workflows/release.yml`):
+   - `macos-latest` → `.dmg`
+   - `windows-latest` → NSIS installer
+   - `ubuntu-latest` → AppImage + `.deb`
+   - Uploads all artifacts to a new GitHub Release at
+     `https://github.com/everettjf/ReadWrite/releases/tag/v<version>`.
 
-    ```bash
-    git add package.json CHANGELOG.md
-    git commit -m "chore: cut v<version>"
-    git push
-    ```
+Release notes on the GitHub Release page come from the matching
+`## [<version>]` block in `CHANGELOG.md`. Typical wall-clock: 5–10
+minutes from the moment you pushed.
 
-4.  **Tag + push to trigger CI**:
+Track CI progress at <https://github.com/everettjf/ReadWrite/actions>.
 
-    ```bash
-    ./deploy.sh release <version>
-    ```
+### When the auto-changelog isn't enough
 
-    The script verifies `package.json` matches the requested version,
-    refuses to run on a dirty tree, refuses an existing tag, then
-    creates an annotated `v<version>` tag and pushes it.
+The generated section is conservative — only `feat` / `fix` /
+`refactor` / `perf` commits land in it. If you want richer prose
+(highlights paragraph, folding related entries, marketing copy),
+edit `CHANGELOG.md` after the script runs but before pushing the
+tag. Quickest path: pass an unknown bump arg first to dry-run the
+checks, then do the cut manually:
 
-5.  **GitHub Actions takes over**. The `release.yml` workflow runs the
-    matrix on macos-latest / ubuntu-latest / windows-latest, builds
-    .dmg / .exe / .AppImage / .deb, and uploads everything to a new
-    GitHub Release at:
+```bash
+pnpm version <version> --no-git-tag-version
+node scripts/cut-changelog.mjs <version>
+# edit CHANGELOG.md by hand
+git add package.json CHANGELOG.md
+git commit -m "chore: cut v<version>"
+git push
+git tag -a v<version> -m "Release <version>"
+git push origin v<version>
+```
 
-        https://github.com/everettjf/ReadWrite/releases/tag/v<version>
-
-    Release notes are auto-extracted from the matching
-    `## [<version>]` block in `CHANGELOG.md`.
-
-    Track progress at <https://github.com/everettjf/ReadWrite/actions>.
-    Typical wall-clock: 5–10 minutes.
+For most releases the auto-generated content is fine — Conventional
+Commits + decent commit subjects do most of the work.
 
 ### Manual upload (skip CI)
 
