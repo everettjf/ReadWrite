@@ -184,6 +184,9 @@ const api = {
   aiCli: {
     detect: (req: CliDetectRequest): Promise<CliDetectResponse> =>
       ipcRenderer.invoke(IPC.AI_CLI_DETECT, req),
+    generate: (req: { prompt: string; jobId?: string }): Promise<{ jobId: string; text: string }> =>
+      ipcRenderer.invoke(IPC.AI_CLI_GENERATE, req),
+    cancel: (jobId: string): Promise<boolean> => ipcRenderer.invoke(IPC.AI_CLI_CANCEL, jobId),
   },
 
   wechat: {
