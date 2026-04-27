@@ -106,6 +106,11 @@ export function registerSettingsIpc(_ctx: IpcContext): void {
     kvSet('tabSessions', map);
   });
 
+  ipcMain.handle(IPC.RECENT_READER_LOAD, () => kvGet('recentReaderItems') ?? {});
+  ipcMain.handle(IPC.RECENT_READER_SAVE, (_e, map: Record<string, unknown>) => {
+    kvSet('recentReaderItems', map);
+  });
+
   ipcMain.handle(IPC.APP_GET_VERSION, () => app.getVersion());
 
   ipcMain.handle(IPC.APP_OPEN_SETTINGS, (event) => {

@@ -182,6 +182,18 @@ export interface SavedTabSession {
   activeIndex?: number;
 }
 
+/**
+ * Per-workspace history of reader items the user has opened. Stored
+ * separately from the live tab session so closing a tab doesn't drop
+ * it from the "Recent" list. Capped at ~30 entries per workspace,
+ * dedup'd on (kind, ref).
+ */
+export type RecentReaderItem =
+  | { kind: 'web' | 'github'; url: string; title?: string; ts: number }
+  | { kind: 'pdf'; path: string; title?: string; ts: number }
+  | { kind: 'epub'; path: string; title?: string; ts: number }
+  | { kind: 'code'; rootPath: string; title?: string; ts: number };
+
 export interface KnownWorkspace {
   /** Absolute path to the workspace folder. */
   path: string;

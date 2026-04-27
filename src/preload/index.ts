@@ -17,6 +17,7 @@ import type {
   WechatPublishPayload,
   WechatPublishResult,
   SavedTabSession,
+  RecentReaderItem,
   CliDetectRequest,
   CliDetectResponse,
 } from '@shared/types';
@@ -128,6 +129,10 @@ const api = {
       ipcRenderer.invoke(IPC.TABS_SESSIONS_LOAD),
     saveTabSessions: (map: Record<string, SavedTabSession>): Promise<void> =>
       ipcRenderer.invoke(IPC.TABS_SESSIONS_SAVE, map),
+    loadRecentReader: (): Promise<Record<string, RecentReaderItem[]>> =>
+      ipcRenderer.invoke(IPC.RECENT_READER_LOAD),
+    saveRecentReader: (map: Record<string, RecentReaderItem[]>): Promise<void> =>
+      ipcRenderer.invoke(IPC.RECENT_READER_SAVE, map),
   },
 
   shell: {

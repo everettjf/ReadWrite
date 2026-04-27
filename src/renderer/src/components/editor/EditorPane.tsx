@@ -13,6 +13,7 @@ import {
 import { Code, Eye, Share2, Loader2, Send, FileCode2, Upload } from 'lucide-react';
 import { MilkdownEditor } from './MilkdownEditor';
 import { SourceEditor } from './SourceEditor';
+import { WelcomePanel } from './WelcomePanel';
 import { useActiveBridge } from '@/lib/active-bridge';
 import { buildWeChatHtml, copyHtmlToClipboard } from '@/lib/wechat-html';
 import { AIInterpretDialog, type InsertTarget } from '@/components/dialogs/AIInterpretDialog';
@@ -418,6 +419,18 @@ function EditorToolbar(): JSX.Element {
 
 export function EditorPane(): JSX.Element {
   const mode = useEditorStore((s) => s.mode);
+  const path = useEditorStore((s) => s.path);
+
+  // No document open → Welcome / Recent screen instead of an empty editor.
+  // Once the user picks something (New doc, open from list, …) `path`
+  // becomes non-null and the real editor takes over.
+  if (!path) {
+    return (
+      <div className="flex h-full w-full flex-col bg-background">
+        <WelcomePanel />
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full w-full flex-col bg-background">

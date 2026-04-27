@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { TitleBar } from './components/layout/TitleBar';
 import { SplitView } from './components/layout/SplitView';
 import { ReaderPane } from './components/reader/ReaderPane';
@@ -23,15 +23,6 @@ import {
 import { rewriteFileUrlsToRelative } from './lib/path-transform';
 import type { PaneSnapshot } from './lib/snip';
 
-const WELCOME_CONTENT = `# Welcome to ReadWrite
-
-Start typing — your document will be saved automatically into a new folder under this workspace.
-
-- Open a URL, GitHub repo, PDF, EPUB, or local code folder from the **+** button on the left.
-- Press **⇧⌘S** (or the ✂️ button) to snip a region from the reader and drop the image into your notes.
-- Toggle WYSIWYG / Source from the editor toolbar.
-`;
-
 export function App(): JSX.Element {
   const loadSettings = useSettingsStore((s) => s.load);
   const settingsLoaded = useSettingsStore((s) => s.loaded);
@@ -46,19 +37,43 @@ export function App(): JSX.Element {
   const [snipSnap, setSnipSnap] = useState<PaneSnapshot | null>(null);
   const [snipToast, setSnipToast] = useState<string | null>(null);
 
+  // The first time `activeWorkspace` becomes non-null is the app launch
+  // (the workspace store loads the persisted active workspace on boot).
+  // We deliberately DO NOT auto-open the last doc / restore tab session
+  // on launch — the user gets the Welcome panel + a recent list to
+  // pick from instead. Subsequent activations (manual workspace switch)
+  // do still restore, since the user is asking to "go back" there.
+  const isFirstWorkspaceActivationRef = useRef(true);
+
   useEffect(() => {
     loadSettings().catch((e) => console.error('[settings] load failed:', e));
     loadWorkspace().catch((e) => console.error('[workspace] load failed:', e));
   }, [loadSettings, loadWorkspace]);
 
-  // When the active workspace changes (e.g. switch from the title bar dropdown),
-  // try to restore the last document opened in that workspace; otherwise reset
-  // to the welcome content so the next user action creates a doc inside the
-  // new workspace. Also restore that workspace's saved reader-tab session.
+  // When the active workspace changes, decide whether to restore state
+  // from disk. On the FIRST activation after app launch we skip this —
+  // user wanted to land on the Welcome / Recent screen, not the last
+  // doc. On manual workspace switches we still restore, since the user
+  // is asking to go back to that workspace's context.
   useEffect(() => {
     if (!activeWorkspace) return;
-    let cancelled = false;
+
+    const isFirst = isFirstWorkspaceActivationRef.current;
+    isFirstWorkspaceActivationRef.current = false;
+
     const editor = useEditorStore.getState();
+
+    if (isFirst) {
+      // Clear any stale editor content (in-memory only — no disk writes).
+      // EditorPane sees `path === null` and renders the WelcomePanel.
+      if (editor.path) {
+        editor.setPath(null);
+        editor.setContent('', { markDirty: false });
+      }
+      return;
+    }
+
+    let cancelled = false;
 
     // Restore tab session in parallel with the doc restore.
     window.api.session
@@ -89,12 +104,10 @@ export function App(): JSX.Element {
         }
       }
 
-      // Fallback: clear stale doc / show welcome.
+      // Fallback: clear stale doc → user lands on Welcome panel.
       if (editor.path && !editor.path.startsWith(`${activeWorkspace}/`)) {
         editor.setPath(null);
-        editor.setContent(WELCOME_CONTENT, { markDirty: false });
-      } else if (!editor.path) {
-        editor.setContent(WELCOME_CONTENT, { markDirty: false });
+        editor.setContent('', { markDirty: false });
       }
     };
 

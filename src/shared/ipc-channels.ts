@@ -40,6 +40,8 @@ export const IPC = {
   SESSION_SAVE: 'session:save',
   TABS_SESSIONS_LOAD: 'session:tabs:load',
   TABS_SESSIONS_SAVE: 'session:tabs:save',
+  RECENT_READER_LOAD: 'session:recent-reader:load',
+  RECENT_READER_SAVE: 'session:recent-reader:save',
 
   // Menu / shell helpers
   SHELL_OPEN_EXTERNAL: 'shell:open-external',
