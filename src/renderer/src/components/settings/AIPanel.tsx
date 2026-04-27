@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useSettingsStore } from '@/stores/settings';
 import { Section, Field } from './Field';
+import { PresetListEditor } from './PresetListEditor';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,8 @@ export function AIPanel(): JSX.Element {
   const aiCliProvider = useSettingsStore((s) => s.aiCliProvider);
   const aiCliClaudePath = useSettingsStore((s) => s.aiCliClaudePath);
   const aiCliCodexPath = useSettingsStore((s) => s.aiCliCodexPath);
+  const aiCustomStyles = useSettingsStore((s) => s.aiCustomStyles);
+  const aiCustomTemplates = useSettingsStore((s) => s.aiCustomTemplates);
   const update = useSettingsStore((s) => s.update);
 
   const [showKey, setShowKey] = useState(false);
@@ -247,6 +250,32 @@ export function AIPanel(): JSX.Element {
             </div>
           </Field>
         )}
+      </Section>
+
+      <Section title="Custom writing styles">
+        <Field
+          label="Your styles"
+          description="Built-in styles (技术深度, 随笔, …) live in the app and aren't editable here. Add your own variants — they show up alongside the built-ins in the 'Generate from reader' dialog."
+        >
+          <PresetListEditor
+            entries={aiCustomStyles ?? []}
+            onChange={(next) => update({ aiCustomStyles: next })}
+            kindLabel="style"
+          />
+        </Field>
+      </Section>
+
+      <Section title="Custom templates">
+        <Field
+          label="Your templates"
+          description="Built-in templates (技术博客, 读书笔记, 新闻摘要) are baked in. Add your own to capture artifact shapes you produce often."
+        >
+          <PresetListEditor
+            entries={aiCustomTemplates ?? []}
+            onChange={(next) => update({ aiCustomTemplates: next })}
+            kindLabel="template"
+          />
+        </Field>
       </Section>
     </div>
   );

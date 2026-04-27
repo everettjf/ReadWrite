@@ -19,6 +19,8 @@ import {
   BUILT_IN_STYLES,
   BUILT_IN_TEMPLATES,
   buildBlogPrompt,
+  mergeStyles,
+  mergeTemplates,
   type AIPreset,
   type Lang,
   type Length,
@@ -47,7 +49,12 @@ type Phase =
 export function AIBlogDialog({ open, onClose }: AIBlogDialogProps): JSX.Element {
   useNativeViewMute(open);
   const aiCliProvider = useSettingsStore((s) => s.aiCliProvider);
+  const aiCustomStyles = useSettingsStore((s) => s.aiCustomStyles);
+  const aiCustomTemplates = useSettingsStore((s) => s.aiCustomTemplates);
   const refreshDocs = useWorkspaceStore((s) => s.refreshDocs);
+
+  const styles = mergeStyles(aiCustomStyles);
+  const templates = mergeTemplates(aiCustomTemplates);
 
   const [phase, setPhase] = useState<Phase>({ kind: 'loading-source' });
   const [styleId, setStyleId] = useState<string>(BUILT_IN_STYLES[0]!.id);
@@ -97,9 +104,8 @@ export function AIBlogDialog({ open, onClose }: AIBlogDialogProps): JSX.Element 
     return off;
   }, [open]);
 
-  const style: AIPreset = BUILT_IN_STYLES.find((s) => s.id === styleId) ?? BUILT_IN_STYLES[0]!;
-  const template: AIPreset =
-    BUILT_IN_TEMPLATES.find((t) => t.id === templateId) ?? BUILT_IN_TEMPLATES[0]!;
+  const style: AIPreset = styles.find((s) => s.id === styleId) ?? styles[0]!;
+  const template: AIPreset = templates.find((t) => t.id === templateId) ?? templates[0]!;
 
   const startGeneration = async (): Promise<void> => {
     if (phase.kind !== 'form') return;
@@ -243,9 +249,10 @@ export function AIBlogDialog({ open, onClose }: AIBlogDialogProps): JSX.Element 
                   disabled={phase.kind === 'generating'}
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
-                  {BUILT_IN_STYLES.map((s) => (
+                  {styles.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
+                      {s.builtIn ? '' : ' (custom)'}
                     </option>
                   ))}
                 </select>
@@ -261,9 +268,10 @@ export function AIBlogDialog({ open, onClose }: AIBlogDialogProps): JSX.Element 
                   disabled={phase.kind === 'generating'}
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
-                  {BUILT_IN_TEMPLATES.map((t) => (
+                  {templates.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.name}
+                      {t.builtIn ? '' : ' (custom)'}
                     </option>
                   ))}
                 </select>

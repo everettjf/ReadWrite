@@ -100,6 +100,11 @@ export interface AppSettings {
   /** Optional absolute path to the codex binary; falls back to PATH lookup. */
   aiCliCodexPath?: string;
 
+  /** User-defined writing styles for the "Generate from reader" flow. */
+  aiCustomStyles?: AIPresetEntry[];
+  /** User-defined templates (artifact shapes) for the "Generate from reader" flow. */
+  aiCustomTemplates?: AIPresetEntry[];
+
   // WeChat 公众号
   wechatAppId?: string;
   wechatAppSecret?: string;
@@ -113,6 +118,18 @@ export interface AppSettings {
   // Layout
   /** Whether the workspace docs sidebar is visible. */
   sidebarVisible: boolean;
+}
+
+/**
+ * Persisted AI preset (style or template). Stored on AppSettings; shape
+ * mirrors the in-renderer AIPreset but lives in @shared so the main
+ * process can validate it during settings IO.
+ */
+export interface AIPresetEntry {
+  id: string;
+  name: string;
+  description: string;
+  systemPrompt: string;
 }
 
 export interface DocSummary {
