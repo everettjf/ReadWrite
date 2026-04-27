@@ -76,6 +76,7 @@ export const IPC = {
   AI_CLI_DETECT: 'ai-cli:detect',
   AI_CLI_GENERATE: 'ai-cli:generate',
   AI_CLI_CANCEL: 'ai-cli:cancel',
+  AI_CLI_PROGRESS: 'ai-cli:progress',
 
   // WeChat (scaffold)
   WECHAT_TEST_CREDENTIALS: 'wechat:test-credentials',

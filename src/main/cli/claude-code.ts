@@ -1,11 +1,20 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { envWithPath } from './resolve-path';
 
+export interface ClaudeProgressEvent {
+  /** Total characters of generated output seen so far. */
+  chars: number;
+  /** A short tail of the most recent output for live preview. */
+  tail: string;
+}
+
 export interface ClaudeRunOptions {
   /** Optional explicit path to the claude binary. */
   pathOverride?: string;
   /** Abort the run on signal. Kills the child process. */
   abortSignal?: AbortSignal;
+  /** Fires on every stdout chunk so the UI can show live progress. */
+  onProgress?: (event: ClaudeProgressEvent) => void;
 }
 
 export interface ClaudeRunResult {
@@ -65,6 +74,14 @@ export async function runClaudeOneShot(
 
     proc.stdout.on('data', (chunk: Buffer) => {
       stdout += chunk.toString('utf8');
+      if (opts.onProgress) {
+        // Tail is throttled to last 200 chars so we don't drag the UI
+        // when the output gets long.
+        opts.onProgress({
+          chars: stdout.length,
+          tail: stdout.slice(-200),
+        });
+      }
     });
     proc.stderr.on('data', (chunk: Buffer) => {
       stderr += chunk.toString('utf8');

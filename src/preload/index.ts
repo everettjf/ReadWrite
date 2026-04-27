@@ -187,6 +187,14 @@ const api = {
     generate: (req: { prompt: string; jobId?: string }): Promise<{ jobId: string; text: string }> =>
       ipcRenderer.invoke(IPC.AI_CLI_GENERATE, req),
     cancel: (jobId: string): Promise<boolean> => ipcRenderer.invoke(IPC.AI_CLI_CANCEL, jobId),
+    onProgress: (
+      listener: (evt: { jobId: string; chars: number; tail: string }) => void,
+    ): (() => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, payload: Parameters<typeof listener>[0]) =>
+        listener(payload);
+      ipcRenderer.on(IPC.AI_CLI_PROGRESS, handler);
+      return () => ipcRenderer.off(IPC.AI_CLI_PROGRESS, handler);
+    },
   },
 
   wechat: {

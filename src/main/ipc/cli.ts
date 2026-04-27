@@ -25,7 +25,7 @@ export function registerCliIpc(_ctx: IpcContext): void {
   ipcMain.handle(
     IPC.AI_CLI_GENERATE,
     async (
-      _e,
+      e,
       req: { prompt: string; jobId?: string },
     ): Promise<{ jobId: string; text: string }> => {
       const jobId = req.jobId ?? nanoid(10);
@@ -33,7 +33,13 @@ export function registerCliIpc(_ctx: IpcContext): void {
       activeJobs.set(jobId, controller);
       try {
         const settings = getCurrentSettings();
-        const text = await runCliOneShot(req.prompt, settings, controller.signal);
+        const text = await runCliOneShot(req.prompt, settings, {
+          abortSignal: controller.signal,
+          onProgress: (evt) => {
+            if (e.sender.isDestroyed()) return;
+            e.sender.send(IPC.AI_CLI_PROGRESS, { jobId, ...evt });
+          },
+        });
         return { jobId, text };
       } finally {
         activeJobs.delete(jobId);

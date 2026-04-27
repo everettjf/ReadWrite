@@ -1,15 +1,22 @@
 import type { AppSettings } from '@shared/types';
-import { runClaudeOneShot } from './claude-code';
+import { runClaudeOneShot, type ClaudeProgressEvent } from './claude-code';
+
+export type CliProgressEvent = ClaudeProgressEvent;
+
+export interface RunCliOpts {
+  abortSignal?: AbortSignal;
+  onProgress?: (event: CliProgressEvent) => void;
+}
 
 /**
- * Run the configured external CLI provider in one-shot mode (no
- * streaming). Picks claude-code or codex based on user settings;
- * forwards the optional binary path override.
+ * Run the configured external CLI provider in one-shot mode (with
+ * live progress events). Picks claude-code or codex based on user
+ * settings; forwards the optional binary path override.
  */
 export async function runCliOneShot(
   prompt: string,
   settings: AppSettings,
-  abortSignal?: AbortSignal,
+  opts: RunCliOpts = {},
 ): Promise<string> {
   const provider = settings.aiCliProvider;
   if (provider === 'none') {
@@ -20,7 +27,8 @@ export async function runCliOneShot(
   if (provider === 'claude-code') {
     const result = await runClaudeOneShot(prompt, {
       pathOverride: settings.aiCliClaudePath,
-      abortSignal,
+      abortSignal: opts.abortSignal,
+      onProgress: opts.onProgress,
     });
     return result.text;
   }

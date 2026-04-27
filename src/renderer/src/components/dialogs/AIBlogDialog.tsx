@@ -32,10 +32,15 @@ interface AIBlogDialogProps {
 
 type OutputTarget = 'new-doc' | 'append' | 'replace';
 
+interface Progress {
+  chars: number;
+  tail: string;
+}
+
 type Phase =
   | { kind: 'loading-source' }
   | { kind: 'form'; source: ExtractedSource }
-  | { kind: 'generating'; source: ExtractedSource; jobId: string }
+  | { kind: 'generating'; source: ExtractedSource; jobId: string; progress: Progress }
   | { kind: 'error'; message: string }
   | { kind: 'source-error'; message: string };
 
@@ -78,6 +83,20 @@ export function AIBlogDialog({ open, onClose }: AIBlogDialogProps): JSX.Element 
     };
   }, [open]);
 
+  // Subscribe to live progress events from the CLI subprocess and
+  // funnel them into the current phase if it's the matching job.
+  useEffect(() => {
+    if (!open) return;
+    const off = window.api.aiCli.onProgress((evt) => {
+      setPhase((prev) =>
+        prev.kind === 'generating' && prev.jobId === evt.jobId
+          ? { ...prev, progress: { chars: evt.chars, tail: evt.tail } }
+          : prev,
+      );
+    });
+    return off;
+  }, [open]);
+
   const style: AIPreset = BUILT_IN_STYLES.find((s) => s.id === styleId) ?? BUILT_IN_STYLES[0]!;
   const template: AIPreset =
     BUILT_IN_TEMPLATES.find((t) => t.id === templateId) ?? BUILT_IN_TEMPLATES[0]!;
@@ -113,7 +132,12 @@ export function AIBlogDialog({ open, onClose }: AIBlogDialogProps): JSX.Element 
 
     const jobId = `blog-${Date.now().toString(36)}`;
     jobIdRef.current = jobId;
-    setPhase({ kind: 'generating', source: phase.source, jobId });
+    setPhase({
+      kind: 'generating',
+      source: phase.source,
+      jobId,
+      progress: { chars: 0, tail: '' },
+    });
 
     try {
       const result = await window.api.aiCli.generate({ prompt, jobId });
@@ -337,9 +361,25 @@ export function AIBlogDialog({ open, onClose }: AIBlogDialogProps): JSX.Element 
             )}
 
             {phase.kind === 'generating' && (
-              <div className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Generating with Claude — this may take a minute or two…
+              <div className="space-y-1.5 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span>
+                    Generating with Claude…{' '}
+                    {phase.progress.chars > 0 ? (
+                      <span className="font-mono text-foreground">
+                        {phase.progress.chars.toLocaleString()} chars
+                      </span>
+                    ) : (
+                      <span className="opacity-70">waiting for first output…</span>
+                    )}
+                  </span>
+                </div>
+                {phase.progress.tail && (
+                  <div className="line-clamp-2 break-words font-mono text-[10px] text-muted-foreground/80">
+                    …{phase.progress.tail}
+                  </div>
+                )}
               </div>
             )}
 
