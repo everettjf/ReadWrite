@@ -65,6 +65,13 @@ const api = {
   screenshot: {
     captureTab: (opts: ScreenshotOptions): Promise<ScreenshotResult | null> =>
       ipcRenderer.invoke(IPC.SCREENSHOT_TAB, opts),
+    captureMainWindow: (rect: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }): Promise<{ dataUrl: string; width: number; height: number } | null> =>
+      ipcRenderer.invoke(IPC.SCREENSHOT_MAIN_WINDOW, rect),
   },
 
   image: {

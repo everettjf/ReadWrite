@@ -27,7 +27,7 @@ export function ReaderPane({ onStartSnip }: ReaderPaneProps): JSX.Element {
   return (
     <div data-rw-pane="reader" className="flex h-full w-full flex-col bg-background">
       <TabBar onStartSnip={onStartSnip} />
-      <div className="relative flex-1 overflow-hidden">
+      <div data-rw-snip-area className="relative flex-1 overflow-hidden">
         {tabs.length === 0 && <EmptyState />}
         {tabs.map((tab) => {
           const active = tab.id === activeTabId;

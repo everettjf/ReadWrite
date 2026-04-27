@@ -1,4 +1,3 @@
-import { toPng } from 'html-to-image';
 import { useTabsStore } from '@/stores/tabs';
 import { useEditorStore } from '@/stores/editor';
 
@@ -7,7 +6,7 @@ export interface PaneSnapshot {
   /** Native pixel width of the captured image. */
   width: number;
   height: number;
-  /** CSS-pixel rect (in window coordinates) where the live pane was. */
+  /** CSS-pixel rect (in window coordinates) where the live snip area was. */
   rect: { left: number; top: number; width: number; height: number };
   /** If a native WebContentsView was hidden so the snapshot could be shown,
    *  call this when done so it gets restored. */
@@ -15,15 +14,21 @@ export interface PaneSnapshot {
 }
 
 /**
- * Capture a still image of the reader pane. For web tabs (WebContentsView)
- * this also temporarily hides the native view so the snapshot we render in
- * the renderer is visible — the caller MUST invoke `restore()` afterwards.
+ * Capture a still image of the reader's content area (excluding the
+ * tab bar). For web tabs (WebContentsView) this also temporarily hides
+ * the native view so the snapshot we render in the renderer is visible
+ * — the caller MUST invoke `restore()` afterwards.
+ *
+ * For DOM-rendered readers (PDF / EPUB / code) we ask Electron to
+ * capture the main window's renderer at the snip area's bounds. This
+ * is much faster and more reliable than html-to-image (which used to
+ * stall + visually jump on PDF.js's many-canvas layout).
  */
 export async function captureReaderPaneSnapshot(): Promise<PaneSnapshot | null> {
-  const readerEl = document.querySelector<HTMLElement>('[data-rw-pane="reader"]');
-  if (!readerEl) return null;
+  const snipEl = document.querySelector<HTMLElement>('[data-rw-snip-area]');
+  if (!snipEl) return null;
 
-  const rect = readerEl.getBoundingClientRect();
+  const rect = snipEl.getBoundingClientRect();
   if (rect.width <= 0 || rect.height <= 0) return null;
 
   const tabs = useTabsStore.getState();
@@ -49,29 +54,27 @@ export async function captureReaderPaneSnapshot(): Promise<PaneSnapshot | null> 
     };
   }
 
-  // Renderer-DOM-based readers (PDF / EPUB / code) — html-to-image of the pane.
-  const dpr = Math.max(1, Math.round(window.devicePixelRatio || 1));
-  const dataUrl = await toPng(readerEl, { cacheBust: true, pixelRatio: dpr });
-  const dims = await measureImage(dataUrl);
+  // Renderer-DOM-based readers (PDF / EPUB / code) — capture the main
+  // window's pixels at the snip area's rect. Electron handles DPR
+  // internally, so the returned image's pixel size is the proper
+  // backing-store size.
+  const result = await window.api.screenshot.captureMainWindow({
+    x: rect.left,
+    y: rect.top,
+    width: rect.width,
+    height: rect.height,
+  });
+  if (!result) return null;
 
   return {
-    dataUrl,
-    width: dims.width,
-    height: dims.height,
+    dataUrl: result.dataUrl,
+    width: result.width,
+    height: result.height,
     rect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
     restore: async () => {
       /* nothing to restore */
     },
   };
-}
-
-function measureImage(dataUrl: string): Promise<{ width: number; height: number }> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
-    img.onerror = (e) => reject(e);
-    img.src = dataUrl;
-  });
 }
 
 /** Crop a sub-rectangle (in source-image pixels) of `dataUrl` to a PNG Blob. */

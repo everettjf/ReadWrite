@@ -98,6 +98,39 @@ export function registerScreenshotIpc(ctx: IpcContext): void {
     },
   );
 
+  /**
+   * Capture an arbitrary region of the main window's renderer. Used by
+   * the snip flow for renderer-DOM readers (PDF / EPUB / code) — much
+   * faster than html-to-image, and unlike capturePage() of a tab, it
+   * actually sees the renderer's drawn pixels (PDF.js canvases etc.).
+   *
+   * Native WebContentsViews (web/github tabs) are NOT in the main
+   * window's render tree — those still go through TabManager.screenshot.
+   */
+  ipcMain.handle(
+    IPC.SCREENSHOT_MAIN_WINDOW,
+    async (
+      _e,
+      rect: { x: number; y: number; width: number; height: number },
+    ): Promise<{ dataUrl: string; width: number; height: number } | null> => {
+      const win = ctx.getMainWindow();
+      if (!win || win.isDestroyed()) return null;
+      const image = await win.webContents.capturePage({
+        x: Math.round(rect.x),
+        y: Math.round(rect.y),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height),
+      });
+      const png = image.toPNG();
+      const size = image.getSize();
+      return {
+        dataUrl: `data:image/png;base64,${png.toString('base64')}`,
+        width: size.width,
+        height: size.height,
+      };
+    },
+  );
+
   ipcMain.handle(IPC.IMAGE_SAVE, async (_e, opts: ImageSaveOptions): Promise<ImageSaveResult> => {
     const settings = getCurrentSettings();
     const { absDir, baseForRelative } = resolveImagesDir(settings, opts.markdownPath ?? null);

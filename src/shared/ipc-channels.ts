@@ -16,6 +16,7 @@ export const IPC = {
 
   // Screenshot
   SCREENSHOT_TAB: 'screenshot:tab',
+  SCREENSHOT_MAIN_WINDOW: 'screenshot:main-window',
   IMAGE_SAVE: 'image:save',
 
   // Filesystem
