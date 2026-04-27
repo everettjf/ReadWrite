@@ -20,10 +20,12 @@ import {
   ExternalLink,
   Search,
   X,
+  ChevronDown,
 } from 'lucide-react';
 import { cn, relativeTime } from '@/lib/utils';
 import { createNewDocument, openMarkdownAtPath, renameDocFolder, docBasename } from '@/lib/doc-io';
 import { RenameDocDialog } from '@/components/dialogs/RenameDocDialog';
+import { WorkspaceSwitcher } from '@/components/layout/WorkspaceSwitcher';
 import type { DocSummary } from '@shared/types';
 
 interface DocsSidebarProps {
@@ -86,11 +88,19 @@ export function DocsSidebar({ onSwitchDoc }: DocsSidebarProps): JSX.Element {
   return (
     <div className="flex h-full flex-col bg-muted/20">
       <div className="flex h-9 shrink-0 items-center gap-1 border-b border-border bg-background/40 px-2">
-        <Folder className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-        <span className="truncate text-xs font-medium" title={active ?? undefined}>
-          {activeWorkspaceName}
-        </span>
-        <div className="flex-1" />
+        <WorkspaceSwitcher
+          align="start"
+          trigger={
+            <button
+              className="flex h-7 min-w-0 flex-1 items-center gap-1.5 rounded-md px-1.5 text-xs font-medium transition-colors hover:bg-accent"
+              title={active ?? undefined}
+            >
+              <Folder className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <span className="min-w-0 flex-1 truncate text-left">{activeWorkspaceName}</span>
+              <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
+            </button>
+          }
+        />
         <Button
           variant="ghost"
           size="icon"
