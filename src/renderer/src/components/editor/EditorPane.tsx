@@ -75,7 +75,20 @@ function EditorToolbar(): JSX.Element {
     proposed: string | null;
     error: string | null;
     busy: boolean;
+    /** Correlates with the in-flight AI streaming job. */
+    jobId: string | null;
   } | null>(null);
+
+  // Subscribe to streaming progress and pipe into the active job.
+  // Filtered by jobId so a superseded request can't overwrite the
+  // newer one.
+  useEffect(() => {
+    return window.api.ai.onProgress((evt) => {
+      setAiDiff((prev) =>
+        prev && prev.jobId === evt.jobId ? { ...prev, proposed: evt.total } : prev,
+      );
+    });
+  }, []);
 
   useEffect(() => {
     if (!status || status.kind !== 'info') return;
@@ -169,27 +182,29 @@ function EditorToolbar(): JSX.Element {
       input = content;
     }
 
+    const jobId = `ai-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
     setAiDiff({
       title: label,
       target,
       instruction,
       input,
       original: input,
-      proposed: null,
+      proposed: '',
       error: null,
       busy: true,
+      jobId,
     });
 
     try {
-      const result = await window.api.ai.complete({ input, instruction });
+      const result = await window.api.ai.complete({ input, instruction, jobId });
       setAiDiff((prev) =>
-        prev && prev.input === input
+        prev && prev.jobId === jobId
           ? { ...prev, proposed: result.text, error: null, busy: false }
           : prev,
       );
     } catch (err) {
       setAiDiff((prev) =>
-        prev && prev.input === input
+        prev && prev.jobId === jobId
           ? { ...prev, error: (err as Error).message, busy: false }
           : prev,
       );
@@ -208,23 +223,28 @@ function EditorToolbar(): JSX.Element {
   };
 
   const onDiffReject = (): void => {
+    if (aiDiff?.busy && aiDiff.jobId) {
+      window.api.ai.cancel(aiDiff.jobId).catch(() => null);
+    }
     setAiDiff(null);
   };
 
   const onDiffRegenerate = async (): Promise<void> => {
     if (!aiDiff) return;
+    if (aiDiff.jobId) window.api.ai.cancel(aiDiff.jobId).catch(() => null);
     const { input, instruction } = aiDiff;
-    setAiDiff((prev) => (prev ? { ...prev, proposed: null, error: null, busy: true } : prev));
+    const jobId = `ai-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 4)}`;
+    setAiDiff((prev) => (prev ? { ...prev, proposed: '', error: null, busy: true, jobId } : prev));
     try {
-      const result = await window.api.ai.complete({ input, instruction });
+      const result = await window.api.ai.complete({ input, instruction, jobId });
       setAiDiff((prev) =>
-        prev && prev.input === input
+        prev && prev.jobId === jobId
           ? { ...prev, proposed: result.text, error: null, busy: false }
           : prev,
       );
     } catch (err) {
       setAiDiff((prev) =>
-        prev && prev.input === input
+        prev && prev.jobId === jobId
           ? { ...prev, error: (err as Error).message, busy: false }
           : prev,
       );

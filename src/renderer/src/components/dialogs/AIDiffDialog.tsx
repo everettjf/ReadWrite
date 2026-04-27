@@ -110,9 +110,31 @@ export function AIDiffDialog({
 
         <div className="max-h-[60vh] min-h-[12rem] overflow-auto rounded-md border border-border bg-muted/20">
           {busy && (
-            <div className="flex items-center justify-center gap-2 p-12 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              AI is thinking…
+            <div className="space-y-2 p-3">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span>
+                  Streaming
+                  {proposed && proposed.length > 0 ? (
+                    <>
+                      {' · '}
+                      <span className="font-mono text-foreground">
+                        {proposed.length.toLocaleString()} chars
+                      </span>
+                    </>
+                  ) : (
+                    '…'
+                  )}
+                </span>
+              </div>
+              {proposed && proposed.length > 0 ? (
+                <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-foreground/85">
+                  {proposed}
+                  <span className="ml-0.5 inline-block h-3 w-1.5 animate-pulse bg-foreground/60 align-middle" />
+                </pre>
+              ) : (
+                <div className="text-xs italic text-muted-foreground">Waiting for first token…</div>
+              )}
             </div>
           )}
           {!busy && error && (

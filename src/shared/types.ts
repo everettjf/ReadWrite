@@ -220,6 +220,17 @@ export interface AICompletionRequest {
   input: string;
   /** Optional task specifier; when omitted the configured systemPrompt is used as-is. */
   instruction?: string;
+  /** Caller-supplied id used to correlate progress events / cancel calls. */
+  jobId?: string;
+}
+
+/** One streaming chunk from the AI. */
+export interface AICompletionProgress {
+  jobId: string;
+  /** Text added since the previous progress event. */
+  delta: string;
+  /** Full text generated so far. */
+  total: string;
 }
 
 export interface AICompletionResult {

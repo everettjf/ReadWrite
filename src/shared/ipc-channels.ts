@@ -74,6 +74,8 @@ export const IPC = {
 
   // AI
   AI_COMPLETE: 'ai:complete',
+  AI_COMPLETE_PROGRESS: 'ai:complete-progress',
+  AI_COMPLETE_CANCEL: 'ai:complete-cancel',
 
   // AI CLI (external Claude Code / Codex command)
   AI_CLI_DETECT: 'ai-cli:detect',

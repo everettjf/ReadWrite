@@ -10,6 +10,7 @@ import type {
   FileTreeEntry,
   AICompletionRequest,
   AICompletionResult,
+  AICompletionProgress,
   ImageSaveOptions,
   ImageSaveResult,
   KnownWorkspace,
@@ -191,6 +192,13 @@ const api = {
   ai: {
     complete: (req: AICompletionRequest): Promise<AICompletionResult> =>
       ipcRenderer.invoke(IPC.AI_COMPLETE, req),
+    cancel: (jobId: string): Promise<boolean> => ipcRenderer.invoke(IPC.AI_COMPLETE_CANCEL, jobId),
+    onProgress: (listener: (evt: AICompletionProgress) => void): (() => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, payload: AICompletionProgress) =>
+        listener(payload);
+      ipcRenderer.on(IPC.AI_COMPLETE_PROGRESS, handler);
+      return () => ipcRenderer.off(IPC.AI_COMPLETE_PROGRESS, handler);
+    },
   },
 
   aiCli: {
