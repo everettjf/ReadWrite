@@ -8,8 +8,28 @@ import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import type { CliDetectResponse } from '@shared/types';
 
+// Default model name suggestions per built-in provider — what shows in
+// the input's placeholder and what we offer when the user switches
+// providers (we don't auto-overwrite their existing value, just hint).
+const PROVIDER_DEFAULT_MODEL: Record<string, string> = {
+  openai: 'gpt-4o-mini',
+  anthropic: 'claude-sonnet-4-5',
+  google: 'gemini-2.5-flash',
+  deepseek: 'deepseek-chat',
+  'openai-compatible': 'gpt-4o-mini',
+};
+
+const PROVIDER_KEY_HINT: Record<string, string> = {
+  openai: 'sk-…',
+  anthropic: 'sk-ant-…',
+  google: 'AIza…',
+  deepseek: 'sk-…',
+  'openai-compatible': 'API key for your endpoint',
+};
+
 export function AIPanel(): JSX.Element {
   const aiEnabled = useSettingsStore((s) => s.aiEnabled);
+  const aiProvider = useSettingsStore((s) => s.aiProvider);
   const aiEndpoint = useSettingsStore((s) => s.aiEndpoint);
   const aiApiKey = useSettingsStore((s) => s.aiApiKey);
   const aiModel = useSettingsStore((s) => s.aiModel);
@@ -97,21 +117,51 @@ export function AIPanel(): JSX.Element {
         </Field>
 
         <Field
-          label="API endpoint"
-          description="OpenAI-compatible base URL. For Azure OpenAI / DeepSeek / Moonshot, use their respective endpoints."
-          htmlFor="aiEndpoint"
+          label="Provider"
+          description="Vendor whose API to call for inline actions (Polish / Translate / Summarize / …). Long-form 'Generate from reader' is governed by the External AI CLI section below — they're independent."
+          htmlFor="aiProvider"
         >
-          <Input
-            id="aiEndpoint"
-            value={aiEndpoint}
-            onChange={(e) => update({ aiEndpoint: e.target.value })}
-            placeholder="https://api.openai.com/v1"
-          />
+          <select
+            id="aiProvider"
+            value={aiProvider}
+            onChange={(e) =>
+              update({
+                aiProvider: e.target.value as
+                  | 'openai'
+                  | 'anthropic'
+                  | 'google'
+                  | 'deepseek'
+                  | 'openai-compatible',
+              })
+            }
+            className="flex h-9 w-72 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <option value="openai">OpenAI</option>
+            <option value="anthropic">Anthropic (Claude)</option>
+            <option value="google">Google (Gemini)</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="openai-compatible">OpenAI-compatible (custom endpoint)</option>
+          </select>
         </Field>
+
+        {aiProvider === 'openai-compatible' && (
+          <Field
+            label="API endpoint"
+            description="Base URL of your OpenAI-compatible endpoint. Examples: https://api.deepseek.com/v1 (legacy), https://api.moonshot.cn/v1, http://localhost:11434/v1 (Ollama)."
+            htmlFor="aiEndpoint"
+          >
+            <Input
+              id="aiEndpoint"
+              value={aiEndpoint}
+              onChange={(e) => update({ aiEndpoint: e.target.value })}
+              placeholder="https://api.openai.com/v1"
+            />
+          </Field>
+        )}
 
         <Field
           label="API key"
-          description="Stored locally in your app data SQLite database. Never sent anywhere except the endpoint above."
+          description="Stored encrypted via your OS keychain (macOS Keychain / Windows DPAPI / Linux libsecret). Sent only to the provider above."
           htmlFor="aiApiKey"
         >
           <div className="flex gap-2">
@@ -120,7 +170,7 @@ export function AIPanel(): JSX.Element {
               type={showKey ? 'text' : 'password'}
               value={aiApiKey}
               onChange={(e) => update({ aiApiKey: e.target.value })}
-              placeholder="sk-..."
+              placeholder={PROVIDER_KEY_HINT[aiProvider] ?? 'sk-…'}
             />
             <Button variant="outline" size="sm" onClick={() => setShowKey((v) => !v)}>
               {showKey ? 'Hide' : 'Show'}
@@ -133,7 +183,7 @@ export function AIPanel(): JSX.Element {
             id="aiModel"
             value={aiModel}
             onChange={(e) => update({ aiModel: e.target.value })}
-            placeholder="gpt-4o-mini"
+            placeholder={PROVIDER_DEFAULT_MODEL[aiProvider] ?? 'gpt-4o-mini'}
             className="w-72"
           />
         </Field>

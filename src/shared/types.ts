@@ -85,8 +85,13 @@ export interface AppSettings {
   imagesDirCustom?: string;
   imagesDirSubfolderName: string;
 
-  // AI
+  // AI (inline actions — Polish / Translate / Summarize / Explain / Interpret)
   aiEnabled: boolean;
+  /** Which vendor API to call. 'openai-compatible' uses an arbitrary
+   *  endpoint URL — for DeepSeek (legacy), Moonshot, Kimi, Ollama, Azure
+   *  OpenAI deployments, etc. */
+  aiProvider: 'openai' | 'anthropic' | 'google' | 'deepseek' | 'openai-compatible';
+  /** Used only when aiProvider === 'openai-compatible'. */
   aiEndpoint: string;
   aiApiKey: string;
   aiModel: string;

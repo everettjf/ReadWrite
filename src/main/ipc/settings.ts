@@ -21,6 +21,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   imagesDirSubfolderName: 'images',
 
   aiEnabled: true,
+  aiProvider: 'openai',
   aiEndpoint: 'https://api.openai.com/v1',
   aiApiKey: '',
   aiModel: 'gpt-4o-mini',

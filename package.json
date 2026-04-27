@@ -48,6 +48,10 @@
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.71",
+    "@ai-sdk/deepseek": "^2.0.29",
+    "@ai-sdk/google": "^3.0.64",
+    "@ai-sdk/openai": "^3.0.53",
     "@codemirror/autocomplete": "^6.18.3",
     "@codemirror/commands": "^6.7.1",
     "@codemirror/lang-markdown": "^6.3.1",
@@ -85,6 +89,7 @@
     "@radix-ui/react-tooltip": "^1.1.6",
     "@tanstack/react-query": "^5.62.7",
     "@types/diff": "^8.0.0",
+    "ai": "^6.0.168",
     "better-sqlite3": "^11.6.0",
     "chokidar": "^4.0.1",
     "class-variance-authority": "^0.7.1",
