@@ -10,48 +10,80 @@
   </p>
 </div>
 
-ReadWrite is a cross-platform desktop app that puts a **reader** and a **Markdown editor** side-by-side. Read a paper, GitHub repo, PDF, or EPUB on the left; write notes — with a working WYSIWYG editor, screenshot-to-clipboard, AI polish, and one-click export to your blog or 微信公众号 — on the right. No tab-switching, no Cmd+V dance.
+ReadWrite is a cross-platform desktop app that puts a **reader** and a **Markdown editor** side-by-side. Read a paper, GitHub repo, PDF, or EPUB on the left; take notes — with a real WYSIWYG editor, region screenshots that paste straight into the doc, AI actions, and one-click export to your blog or 微信公众号 — on the right.
 
-> **Latest release**: [v0.1.0](https://github.com/everettjf/ReadWrite/releases/latest) — download the .dmg / .exe / .AppImage from the releases page. Binaries are unsigned; on macOS open with right-click → Open the first time, on Windows confirm the SmartScreen warning.
+The non-obvious bit: long-form AI generation runs through **your locally-installed Claude Code / Codex / Gemini / OpenCode CLI** by default — no extra API key, no extra subscription. If you already pay for one of those, ReadWrite uses the seat you have.
+
+> **Status**: early-stage OSS. The macOS path is the most-used; Windows / Linux are built by CI but get less manual testing. PRs welcome.
 
 ---
 
-## What it does
+## Why ReadWrite
 
-**Read** — multi-tab reader for the left pane:
+There's a class of work — reading a paper and writing about it, watching a tutorial and turning it into notes, browsing a repo and drafting a blog post — that doesn't fit either a browser tab or a notes app:
 
-- Any URL or GitHub repo (`owner/repo` shorthand) via Electron's `WebContentsView` — so cookies, CSP, and sites that set `X-Frame-Options` (which is _everyone_ logged-in) just work, unlike iframes.
-- PDF via `pdfjs-dist` with page nav and zoom.
-- EPUB via `epubjs` + `react-reader`, with location persisted per tab.
-- Local code folder via Monaco (read-only) + a `chokidar`-driven file tree that hot-refreshes on disk changes.
+- **Browser-only**: you screenshot, alt-tab, paste, repeat. Nothing remembers what you were reading.
+- **Notes-only** (Obsidian, Notion, Bear…): the source material is somewhere else, and pasting URLs is a sad substitute for actually having it _next to_ what you're writing.
 
-**Write** — Milkdown editor on the right:
+ReadWrite is one window: live reader on the left, editor on the right, a snip tool that drops region screenshots straight into your doc, and AI that can read what's in the reader and draft something for you in the editor.
 
-- WYSIWYG mode (Milkdown 7.x, GFM, history, slash commands) with a one-click toggle to a full **CodeMirror 6 source mode** that shares the same buffer.
-- Live editor font / family / max-width controlled by CSS variables driven from settings.
-- Pasting any image (from anywhere — system clipboard, snip tool, drag-drop) auto-saves it to `images/` next to the markdown file and inserts a relative-path link.
+---
 
-**Capture** — get content from reader to editor in one motion:
+## Features
 
-- **Full-pane screenshot** — camera button on each reader toolbar grabs the whole tab.
-- **Region snip** — title-bar ✂️ button (or `⇧⌘S` / `Ctrl+Shift+S`). Freezes the reader pane, lets you drag a rectangle, copies the cropped PNG to the clipboard _and_ saves it to disk. For web tabs the native `WebContentsView` is briefly hidden so a renderer-side overlay can be drawn — see [docs/adr/001-electron-vs-tauri.md](docs/adr/001-electron-vs-tauri.md) for why this matters.
+### Reader (left pane)
 
-**AI**:
+- **Multi-tab** reader supporting:
+  - Any **URL** or **GitHub repo** (`owner/repo` shorthand) via Electron's `WebContentsView` — so cookies, CSP, and sites that set `X-Frame-Options: DENY` (i.e. nearly every authenticated app) just work, unlike iframes.
+  - **PDF** via `pdfjs-dist` with continuous scroll and zoom.
+  - **EPUB** via `epubjs` + `react-reader`, location persisted per tab.
+  - **Local code folder** via Monaco (read-only) + a `chokidar`-driven file tree that hot-refreshes on disk changes.
+- **Region snip** (✂️ button or `⇧⌘S` / `Ctrl+Shift+S`) — freezes the reader, drag a rectangle, the cropped PNG saves to the doc's `images/` folder and inserts a relative-path Markdown reference. Web tabs use `WebContentsView.capturePage()`; PDF / EPUB / code use `mainWindow.webContents.capturePage(rect)` — both are native and instant.
+- **Recent reader items** list at the bottom of the reader pane — re-open a PDF or web page from history without going through the file dialog again.
 
-- Configurable OpenAI-compatible endpoint (works with OpenAI, DeepSeek, Moonshot, Azure OpenAI, local Ollama, …).
-- ✨ Polish action in the editor: with a selection, polishes the selection in place; without, polishes the whole doc.
-- Connection test in Settings → AI verifies endpoint + key + model with a real chat-completions call.
-- API key stays in the main process; renderer never sees the network request.
+### Editor (right pane)
 
-**Publish**:
+- **Milkdown 7.x WYSIWYG** with GFM, history, slash commands, and a one-click toggle to **CodeMirror 6 source mode** sharing the same buffer.
+- Pasting any image (system clipboard / snip / drag-drop) auto-saves to `images/` and inserts a relative-path link.
+- Live editor font / family / max-width controlled from Settings.
+- Autosave with configurable debounce. Image references stay relative, so moving a doc folder elsewhere keeps everything intact.
 
-- **Copy to WeChat 公众号** in the editor toolbar. Renders the document with per-element inline `style="..."` attributes (no `<style>` tag — WeChat strips them) and base64-embeds local images. Three themes ship: Default (sans, comfortable), Serif (long-form), Compact. Approach modeled on [Spute/obsidian-copy-to-mp](https://github.com/Spute/obsidian-copy-to-mp).
-- **Copy as inlined HTML** for generic targets like email or Notion.
+### Workspaces
 
-**Settings**:
+A workspace is just a folder. Each document inside lives in its own subfolder with `<name>.md` plus an `images/` directory next to it.
 
-- Standalone settings window (separate `BrowserWindow`) with sidebar panels: General · Editor · Images · AI · WeChat · About.
-- Cross-window sync — change a value here and the main window updates live.
+- **Multi-workspace** — switch between projects from a dropdown in the title bar (or the sidebar header). Each workspace remembers its own last document, open reader tabs, and recent items.
+- **Forget vs Delete to Trash** — "Forget" removes a workspace from the list but leaves the folder on disk; "Delete" moves the folder to the system Trash (recoverable).
+- **iCloud-friendly default** — on macOS the app suggests `~/Library/Mobile Documents/com~apple~CloudDocs/ReadWrite Notes/` so docs sync across devices automatically.
+
+### AI
+
+Two parallel surfaces with different goals:
+
+**Inline actions (OpenAI-compatible API)** — short, in-place edits with a Cursor-style diff review:
+
+- **Polish** (selection or whole doc), **Translate** (en/zh), **Summarize**, **Explain**, **Interpret with custom prompt**.
+- Every destructive change opens a side-by-side diff dialog with **Accept / Reject / Regenerate**. Nothing touches your text until you say so.
+- Configurable OpenAI-compatible endpoint — works with OpenAI, DeepSeek, Moonshot, Azure OpenAI, local Ollama, etc. API keys are encrypted with Electron's `safeStorage` (OS keychain on macOS / Windows; libsecret on Linux), never sent to anything but your endpoint.
+
+**Generate from reader (external CLI)** — long-form drafts where the input is what you're reading:
+
+- One-click "Generate from reader…" reads the active reader tab (web text via Readability-style extraction; PDF text via pdfjs), then asks your local AI CLI to draft a Markdown artifact.
+- Pick **6 built-in writing styles** — 技术深度 / 随笔 / 教程 / 公众号体 / 科普 / 简报 — and **3 built-in templates** — 技术博客 / 读书笔记 / 新闻摘要. Add your own in Settings.
+- Provider matrix: **Claude Code** (recommended, well-tested) — `claude -p --allowedTools ""`, no tool access for safety. **Codex / Gemini / OpenCode** as experimental. **Custom command** for any other CLI you run.
+- Live streaming progress (char count + tail preview), cancellable. Output lands in a new doc / appended / replacing current — your choice.
+
+### Publish
+
+- **Copy to WeChat 公众号** — renders the doc with per-element inline `style="..."` (no `<style>` tag — WeChat strips them) and base64-embeds local images. Three themes ship: Default, Serif, Compact. Approach modeled on [Spute/obsidian-copy-to-mp](https://github.com/Spute/obsidian-copy-to-mp).
+- **Direct publish to WeChat draft** — uploads inline images via `material/uploadimg`, creates a draft via `draft/add`, opens the WeChat editor for final review. Token cached for the 7200s lifetime.
+- **Copy as inlined HTML** for generic targets (email, Notion).
+
+### App-level
+
+- **Welcome / Recent screen** on launch — recent documents on the right (newest first), recent reader items on the left. No more auto-opening yesterday's tab.
+- **Standalone settings window** with a sidebar (General / Editor / Images / AI / WeChat / Workspaces / About). Cross-window sync — change a value, every open window updates live.
+- **Per-workspace tab session** — closing the app or switching workspaces preserves your open reader tabs.
 
 ---
 
@@ -64,17 +96,34 @@ pnpm install         # auto-rebuilds better-sqlite3 against Electron's Node ABI
 pnpm dev             # main + preload + renderer with HMR
 ```
 
-Requires **Node ≥ 20** and **pnpm ≥ 9**. If you ever see a `NODE_MODULE_VERSION` mismatch, run `pnpm run rebuild:native` (note the explicit `run` — `pnpm rebuild` is a different built-in command and won't fix it).
+Requires **Node ≥ 20** and **pnpm ≥ 9**. If you ever see a `NODE_MODULE_VERSION` mismatch, run `pnpm run rebuild:native` (the explicit `run` matters — `pnpm rebuild` is a different built-in command).
+
+### Optional: hook up "Generate from reader"
+
+If you already have one of these CLIs installed and authenticated:
+
+```bash
+which claude    # Anthropic Claude Code (recommended)
+which codex     # OpenAI Codex
+which gemini    # Google Gemini CLI
+which opencode  # opencode.ai
+```
+
+Then in the app: **Settings → AI → External AI CLI → pick provider → Detect CLI**. If detection fails, paste an absolute binary path into the override field; or pick "Custom command…" and write your own template (`{prompt}` is replaced; otherwise prompt comes via stdin).
+
+The CLI runs in a **no-tools / sandboxed mode** so prompt-injected reader content can't trick the model into reading your local files. See `src/main/cli/claude-code.ts` for the exact flags.
+
+---
 
 ## Build distributables
 
-For the current host platform:
+For the current host:
 
 ```bash
 ./deploy.sh                  # typecheck + lint + test + dist for the host
 ```
 
-Or invoke `electron-builder` directly:
+Or run `electron-builder` directly:
 
 ```bash
 pnpm dist:mac                # .dmg (x64 + arm64) — must run on macOS
@@ -87,26 +136,31 @@ Output lands in `release/<version>/`.
 ### Cross-platform via GitHub Actions
 
 ```bash
-./deploy.sh release 0.1.0    # tag v0.1.0, push, trigger CI
+./deploy.sh release 0.2.0    # tags v0.2.0, pushes, triggers CI
 ```
 
-The `release.yml` workflow builds .dmg / .exe / .AppImage / .deb on a three-OS matrix and uploads them to a new GitHub Release. Release notes are auto-extracted from the matching `## [0.1.0]` section in `CHANGELOG.md`.
+The `release.yml` workflow builds .dmg / .exe / .AppImage / .deb on a three-OS matrix and uploads everything to a new GitHub Release. Notes are auto-extracted from the matching `## [0.2.0]` block in `CHANGELOG.md`.
 
-> **Note**: artifacts ship unsigned for v0.1.x. macOS users open with right-click → Open the first time; Windows users see a SmartScreen warning. Real Apple Developer + Authenticode signing is on the roadmap.
+> **Heads-up**: artifacts ship **unsigned** today. macOS users open with right-click → Open the first time; Windows users acknowledge the SmartScreen warning. Real Apple Developer + Authenticode signing is on the roadmap.
 
 ---
 
 ## Architecture (in one minute)
 
-| Process  | Responsibility                                                                                                |
-| -------- | ------------------------------------------------------------------------------------------------------------- |
-| Main     | Window lifecycle, `WebContentsView` tab manager, IPC, SQLite persistence, file watchers, AI and WeChat fetch. |
-| Preload  | Typed `contextBridge` exposing `window.api.*` to the renderer.                                                |
-| Renderer | React 18 + Tailwind + shadcn/ui. Reader pane (4 tab kinds), Milkdown / CodeMirror editor, Settings window.    |
+| Process  | Responsibility                                                                                                 |
+| -------- | -------------------------------------------------------------------------------------------------------------- |
+| Main     | Window lifecycle, `WebContentsView` tab manager, IPC, SQLite persistence, file watchers, AI / CLI / WeChat IO. |
+| Preload  | Typed `contextBridge` exposing `window.api.*` to the renderer.                                                 |
+| Renderer | React 18 + Tailwind + shadcn/ui. Reader pane (4 tab kinds), Milkdown / CodeMirror editor, Settings window.     |
 
-The non-obvious load-bearing decisions — **Electron over Tauri**, **`WebContentsView` over iframe / `<webview>`**, **screenshot via capture-then-overlay**, **per-element inline styles for the WeChat exporter** — all live in [docs/adr/001-electron-vs-tauri.md](docs/adr/001-electron-vs-tauri.md). Read it before opening a "why don't we just use \_\_\_" issue.
+Two key boundaries:
 
-IPC channels are declared once in [`src/shared/ipc-channels.ts`](src/shared/ipc-channels.ts); the preload surface is fully typed so `window.api.foo()` calls are end-to-end strongly typed.
+- **`WebContentsView` over iframe / `<webview>`** — iframes can't render most authenticated sites due to `X-Frame-Options`; `<webview>` is deprecated. `WebContentsView` is a real Chromium tab living above the renderer DOM, controlled by IPC.
+- **External CLI providers as subprocesses** — `src/main/cli/` spawns `claude` / `codex` / `gemini` / `opencode` with `--no-tools`-style flags, pipes the prompt via stdin, captures stdout, emits live progress events. Cancellation kills the subprocess via `AbortSignal`.
+
+The non-obvious decisions — Electron over Tauri, capture-then-overlay snip, per-element inline styles for the WeChat exporter — live in [docs/adr/001-electron-vs-tauri.md](docs/adr/001-electron-vs-tauri.md).
+
+IPC channels are declared once in [`src/shared/ipc-channels.ts`](src/shared/ipc-channels.ts); the preload is fully typed so `window.api.foo()` calls are end-to-end strongly typed.
 
 ---
 
@@ -118,8 +172,10 @@ src/
 │   ├── index.ts                # entry / lifecycle
 │   ├── window.ts               # main + settings BrowserWindow factories
 │   ├── tabs.ts                 # WebContentsView tab manager
-│   ├── db/                     # better-sqlite3 (kv_store, recent_docs)
-│   ├── ipc/                    # reader / fs / screenshot / settings / ai / wechat handlers
+│   ├── secrets.ts              # Electron safeStorage wrapper for AI keys / WeChat secret
+│   ├── cli/                    # external CLI providers (claude / codex / gemini / opencode / custom)
+│   ├── db/                     # better-sqlite3 (kv_store)
+│   ├── ipc/                    # reader / fs / screenshot / settings / ai / cli / wechat / workspace
 │   └── watchers/               # chokidar file watcher hub
 ├── preload/index.ts            # contextBridge api surface
 ├── renderer/
@@ -128,14 +184,16 @@ src/
 │       ├── App.tsx             # main window root
 │       ├── SettingsApp.tsx     # settings window root (loaded at #/settings)
 │       ├── components/
-│       │   ├── layout/         # SplitView, TitleBar
-│       │   ├── reader/         # WebReader, PdfReader, EpubReaderView, CodeReader, TabBar
-│       │   ├── editor/         # MilkdownEditor, SourceEditor, EditorPane
-│       │   ├── settings/       # General/Editor/Images/AI/WeChat/About panels
+│       │   ├── layout/         # SplitView, TitleBar, WorkspaceSwitcher
+│       │   ├── reader/         # WebReader, PdfReader, EpubReaderView, CodeReader, TabBar, RecentReaderList
+│       │   ├── editor/         # MilkdownEditor, SourceEditor, EditorPane, WelcomePanel
+│       │   ├── sidebar/        # DocsSidebar (workspace doc browser + filter)
+│       │   ├── settings/       # General / Editor / Images / AI / WeChat / Workspaces / About panels
+│       │   ├── dialogs/        # AIDiffDialog, AIInterpretDialog, AIBlogDialog, RenameDocDialog, …
 │       │   ├── snip/           # full-window region-snip overlay
-│       │   └── ui/             # shadcn primitives (button, dialog, select, switch, …)
-│       ├── stores/             # zustand: tabs, editor, settings
-│       └── lib/                # utils, ipc, screenshot, snip, wechat-html, wechat-themes
+│       │   └── ui/             # shadcn primitives
+│       ├── stores/             # zustand: tabs, editor, settings, workspace, editor-commands
+│       └── lib/                # utils, snip, doc-io, recent-reader, ai-blog-presets, wechat-html, …
 └── shared/                     # types + IPC channel names shared across processes
 ```
 
@@ -146,21 +204,24 @@ src/
 - **Shell**: Electron 33+, electron-vite, electron-builder
 - **UI**: React 18, Tailwind 3, shadcn/ui (Radix primitives), lucide-react, react-resizable-panels
 - **Editor**: Milkdown 7.x (commonmark, gfm, history, listener, clipboard, upload), CodeMirror 6
-- **Reader**: pdfjs-dist, epubjs + react-reader, Monaco, Electron WebContentsView
-- **Data**: better-sqlite3 (settings, sessions, recents), chokidar (file watching), Zustand (state), TanStack Query
+- **Reader**: pdfjs-dist, epubjs + react-reader, Monaco, Electron `WebContentsView`
+- **Data**: better-sqlite3 (settings, sessions, recents), Electron `safeStorage` (encrypted secrets), chokidar (file watching), Zustand (state)
+- **AI**: OpenAI-compatible HTTP for short actions; subprocess execution of `claude` / `codex` / `gemini` / `opencode` for long-form generation
 - **Tooling**: TypeScript strict, ESLint, Prettier, Husky, lint-staged, commitlint (Conventional Commits), Vitest
 
 ---
 
 ## Roadmap
 
-Tracked in [CHANGELOG.md](CHANGELOG.md). Short-term items I'm working on:
+Tracked in [CHANGELOG.md](CHANGELOG.md). Things on my radar:
 
-- [ ] Direct publish to WeChat 公众号 drafts (credentials are wired, the upload + create-draft flow is the missing piece).
-- [ ] More AI actions: continue, translate, summarize-into-frontmatter, slash commands.
+- [ ] Code-signing for macOS (Apple Developer ID) and Windows (Authenticode) so Gatekeeper / SmartScreen warnings go away.
+- [ ] Mozilla Readability for web content extraction (currently a hand-rolled DOM heuristic — works for ~80% of articles).
+- [ ] Recent items in the New-Tab dialog so they're reachable when the reader isn't empty.
 - [ ] Snip rectangle: drag handles for post-release adjustment.
-- [ ] Tab session restore across launches.
-- [ ] API keys behind `keytar` instead of plaintext SQLite.
+- [ ] Better stream-json parsing for Claude Code (we currently rely on `--output-format text` + a byte counter; full event parsing would unlock per-phase progress).
+- [ ] Drag-reorder reader tabs.
+- [ ] Per-doc YAML frontmatter editor.
 
 ---
 
@@ -171,6 +232,7 @@ PRs welcome. The basics:
 - Branch off `main`. Use [Conventional Commits](https://www.conventionalcommits.org/).
 - `pnpm typecheck && pnpm lint && pnpm test && pnpm build` must all pass; CI runs them on every PR.
 - For non-trivial changes, open an issue first so we can agree on direction.
+- The `docs/testing.md` black-box test plan is the authoritative manual-testing checklist for releases — running through it on macOS catches most regressions.
 
 Full guide: [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -179,6 +241,7 @@ Full guide: [CONTRIBUTING.md](CONTRIBUTING.md).
 ## Acknowledgements
 
 - The "Copy to WeChat 公众号" pipeline — particularly the per-element inline-styles approach and the `<li>`-children-wrapped-in-`<p>` quirk — was directly modeled on [Spute/obsidian-copy-to-mp](https://github.com/Spute/obsidian-copy-to-mp). Different runtime, same set of WeChat-editor pain points.
+- [Anthropic Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview), [OpenAI Codex CLI](https://github.com/openai/codex), [Google Gemini CLI](https://github.com/google-gemini/gemini-cli), and [OpenCode](https://opencode.ai/) — the four agentic CLIs the "Generate from reader" feature wraps.
 - [Milkdown](https://milkdown.dev/) for the WYSIWYG core, [CodeMirror](https://codemirror.net/) for the source mode, [pdfjs-dist](https://github.com/mozilla/pdf.js) for PDFs, [epubjs](https://github.com/futurepress/epub.js) for EPUBs.
 - [shadcn/ui](https://ui.shadcn.com/) and [Radix UI](https://www.radix-ui.com/) for accessible primitives that don't need a 200KB component library to look good.
 
