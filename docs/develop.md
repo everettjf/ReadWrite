@@ -100,11 +100,14 @@ AppImage and .deb both build natively. No signing concerns.
 One command, end-to-end:
 
 ```bash
-./deploy.sh release           # auto-bump patch (e.g. 0.1.0 → 0.1.1)
+./deploy.sh release           # auto-bump patch (0.1.0 → 0.1.1)
 ./deploy.sh release patch     # same — explicit
 ./deploy.sh release minor     # 0.1.0 → 0.2.0
 ./deploy.sh release major     # 0.1.0 → 1.0.0
-./deploy.sh release 0.5.0     # explicit version
+./deploy.sh release 0.1.0     # explicit version (passing the current package.json
+                              #   version is fine too — publishes the current state
+                              #   as that version without re-bumping or re-writing
+                              #   the CHANGELOG entry that already exists)
 ```
 
 What happens, in order:

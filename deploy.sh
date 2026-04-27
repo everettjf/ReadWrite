@@ -9,10 +9,11 @@
 #   ./deploy.sh all                      Build everything for the current host (cross-platform if tooling is present)
 #
 #   ./deploy.sh release                  Cut a patch release (auto-bump from package.json)
-#   ./deploy.sh release patch            Same — explicit
-#   ./deploy.sh release minor            Bump minor (1.2.3 → 1.3.0)
-#   ./deploy.sh release major            Bump major (1.2.3 → 2.0.0)
-#   ./deploy.sh release 0.5.0            Cut an explicit version
+#   ./deploy.sh release patch            Same — explicit (0.1.0 → 0.1.1)
+#   ./deploy.sh release minor            Bump minor (0.1.0 → 0.2.0)
+#   ./deploy.sh release major            Bump major (0.1.0 → 1.0.0)
+#   ./deploy.sh release 0.1.0            Cut an explicit version (same as package.json works too — publishes
+#                                        the current state without bumping)
 #                                        End-to-end: bumps package.json, regenerates the CHANGELOG section
 #                                        from `git log <last-tag>..HEAD`, commits, tags, pushes, triggers
 #                                        the three-OS GitHub Actions matrix.
@@ -153,6 +154,13 @@ release_tag() {
     exit 1
   fi
 
+  local current_version
+  current_version=$(node -p "require('./package.json').version")
+  local same_version=0
+  if [ "$current_version" = "$version" ]; then
+    same_version=1
+  fi
+
   local last_tag
   last_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 
@@ -187,16 +195,24 @@ release_tag() {
   ensure_pnpm_install
   run_checks
 
-  echo "==> Bumping package.json to $version"
-  pnpm version "$version" --no-git-tag-version >/dev/null
+  if [ "$same_version" = "1" ]; then
+    echo "==> package.json already at $version — skipping bump"
+  else
+    echo "==> Bumping package.json to $version"
+    pnpm version "$version" --no-git-tag-version >/dev/null
+  fi
 
   echo "==> Generating CHANGELOG entry"
   node scripts/cut-changelog.mjs "$version" >/dev/null
 
   echo "==> Committing version bump + changelog"
   git add package.json CHANGELOG.md
-  git commit -m "chore: cut v${version}" >/dev/null
-  git push origin HEAD >/dev/null
+  if git diff --cached --quiet; then
+    echo "    (no file changes — nothing to commit; proceeding straight to tag)"
+  else
+    git commit -m "chore: cut v${version}" >/dev/null
+    git push origin HEAD >/dev/null
+  fi
 
   echo "==> Creating tag $tag and pushing"
   git tag -a "$tag" -m "Release $version"

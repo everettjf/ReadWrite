@@ -81,6 +81,20 @@ const entry = `## [${version}] — ${today}\n\n${sections.join('\n\n')}\n`;
 const path = 'CHANGELOG.md';
 const content = fs.readFileSync(path, 'utf8');
 
+// If a section for this exact version already exists, leave it alone —
+// the user already wrote prose for it, or a previous run of this script
+// already inserted one. Idempotent re-runs and "publish-without-bumping"
+// flows (re-cutting an unreleased version) Just Work.
+const versionSectionRe = new RegExp(
+  String.raw`^## \[${version.replace(/[.+*?^${}()|[\]\\]/g, '\\$&')}\]`,
+  'm',
+);
+if (versionSectionRe.test(content)) {
+  process.stderr.write(`(cut-changelog: ## [${version}] already in CHANGELOG.md; skipping)\n`);
+  process.stdout.write(entry);
+  process.exit(0);
+}
+
 // Insert after the Unreleased block (right before the next `## [version]`).
 // Tolerant of whatever the Unreleased section contains.
 const unreleasedRe = /(## \[Unreleased\][\s\S]*?)(\n## \[)/;
