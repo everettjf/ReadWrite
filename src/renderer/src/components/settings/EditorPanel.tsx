@@ -1,4 +1,5 @@
 import { useSettingsStore } from '@/stores/settings';
+import { useT } from '@/i18n';
 import { Section, Field } from './Field';
 import { Input } from '@/components/ui/input';
 import {
@@ -11,6 +12,7 @@ import {
 import type { AppSettings } from '@shared/types';
 
 export function EditorPanel(): JSX.Element {
+  const t = useT();
   const editorFontSize = useSettingsStore((s) => s.editorFontSize);
   const editorFontFamily = useSettingsStore((s) => s.editorFontFamily);
   const editorMaxWidth = useSettingsStore((s) => s.editorMaxWidth);
@@ -20,10 +22,10 @@ export function EditorPanel(): JSX.Element {
 
   return (
     <div className="space-y-8">
-      <Section title="Editor">
+      <Section title={t('settings.editor.title')}>
         <Field
-          label="Default mode"
-          description="Which view to open new documents in."
+          label={t('settings.editor.defaultMode.label')}
+          description={t('settings.editor.defaultMode.description')}
           htmlFor="defaultMode"
         >
           <Select
@@ -34,13 +36,13 @@ export function EditorPanel(): JSX.Element {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="wysiwyg">WYSIWYG</SelectItem>
-              <SelectItem value="source">Source</SelectItem>
+              <SelectItem value="wysiwyg">{t('settings.editor.defaultMode.wysiwyg')}</SelectItem>
+              <SelectItem value="source">{t('settings.editor.defaultMode.source')}</SelectItem>
             </SelectContent>
           </Select>
         </Field>
 
-        <Field label="Font family" htmlFor="fontFamily">
+        <Field label={t('settings.editor.fontFamily.label')} htmlFor="fontFamily">
           <Select
             value={editorFontFamily}
             onValueChange={(v) =>
@@ -51,16 +53,16 @@ export function EditorPanel(): JSX.Element {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="sans">Sans-serif (Inter)</SelectItem>
-              <SelectItem value="serif">Serif (Georgia)</SelectItem>
-              <SelectItem value="mono">Monospace (JetBrains Mono)</SelectItem>
+              <SelectItem value="sans">{t('settings.editor.fontFamily.sans')}</SelectItem>
+              <SelectItem value="serif">{t('settings.editor.fontFamily.serif')}</SelectItem>
+              <SelectItem value="mono">{t('settings.editor.fontFamily.mono')}</SelectItem>
             </SelectContent>
           </Select>
         </Field>
 
         <Field
-          label="Font size"
-          description="Applies to both WYSIWYG and source modes."
+          label={t('settings.editor.fontSize.label')}
+          description={t('settings.editor.fontSize.description')}
           htmlFor="fontSize"
         >
           <Input
@@ -79,8 +81,8 @@ export function EditorPanel(): JSX.Element {
         </Field>
 
         <Field
-          label="Content max width (px)"
-          description="How wide the prose column gets before margins kick in."
+          label={t('settings.editor.maxWidth.label')}
+          description={t('settings.editor.maxWidth.description')}
           htmlFor="maxWidth"
         >
           <Input
@@ -99,8 +101,8 @@ export function EditorPanel(): JSX.Element {
         </Field>
 
         <Field
-          label="Autosave"
-          description="Saves the active document this many milliseconds after the last edit. 0 disables autosave entirely."
+          label={t('settings.editor.autosave.label')}
+          description={t('settings.editor.autosave.description')}
           htmlFor="autosave"
           inline
         >

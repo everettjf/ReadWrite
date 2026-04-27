@@ -1,4 +1,5 @@
 import { useSettingsStore } from '@/stores/settings';
+import { useT } from '@/i18n';
 import { Section, Field } from './Field';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ import type { ImagesDirMode } from '@shared/types';
 import { FolderOpen } from 'lucide-react';
 
 export function ImagesPanel(): JSX.Element {
+  const t = useT();
   const mode = useSettingsStore((s) => s.imagesDirMode);
   const custom = useSettingsStore((s) => s.imagesDirCustom ?? '');
   const subfolder = useSettingsStore((s) => s.imagesDirSubfolderName);
@@ -21,17 +23,17 @@ export function ImagesPanel(): JSX.Element {
   const pickCustomDir = async (): Promise<void> => {
     const paths = await window.api.fs.openDialog({
       directory: true,
-      title: 'Choose image storage folder',
+      title: t('settings.images.dialog.pick'),
     });
     if (!paths || paths.length === 0) return;
     await update({ imagesDirCustom: paths[0]!, imagesDirMode: 'custom' });
   };
 
   return (
-    <Section title="Images & Screenshots">
+    <Section title={t('settings.images.title')}>
       <Field
-        label="Storage location"
-        description="Where the camera button writes captured PNGs."
+        label={t('settings.images.location.label')}
+        description={t('settings.images.location.description')}
         htmlFor="imagesMode"
       >
         <Select value={mode} onValueChange={(v) => update({ imagesDirMode: v as ImagesDirMode })}>
@@ -39,16 +41,16 @@ export function ImagesPanel(): JSX.Element {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="next-to-doc">Next to current document (recommended)</SelectItem>
-            <SelectItem value="custom">Custom absolute folder</SelectItem>
-            <SelectItem value="pictures">User Pictures folder</SelectItem>
+            <SelectItem value="next-to-doc">{t('settings.images.location.nextToDoc')}</SelectItem>
+            <SelectItem value="custom">{t('settings.images.location.custom')}</SelectItem>
+            <SelectItem value="pictures">{t('settings.images.location.pictures')}</SelectItem>
           </SelectContent>
         </Select>
       </Field>
 
       <Field
-        label="Subfolder name"
-        description="Used by 'next to current document' mode. Inserted as a relative href so the markdown stays portable."
+        label={t('settings.images.subfolder.label')}
+        description={t('settings.images.subfolder.description')}
         htmlFor="subfolder"
       >
         <Input
@@ -61,8 +63,8 @@ export function ImagesPanel(): JSX.Element {
       </Field>
 
       <Field
-        label="Custom folder"
-        description="Used by 'custom absolute folder' mode."
+        label={t('settings.images.custom.label')}
+        description={t('settings.images.custom.description')}
         htmlFor="customDir"
       >
         <div className="flex gap-2">
@@ -74,7 +76,7 @@ export function ImagesPanel(): JSX.Element {
             placeholder="/Users/you/Pictures/ReadWrite"
           />
           <Button variant="outline" onClick={pickCustomDir}>
-            <FolderOpen className="mr-2 h-4 w-4" /> Browse
+            <FolderOpen className="mr-2 h-4 w-4" /> {t('common.browse')}
           </Button>
         </div>
       </Field>

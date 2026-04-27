@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Cloud, Folder, FolderOpen, FolderPlus, ArrowRight } from 'lucide-react';
 import { useWorkspaceStore } from './stores/workspace';
+import { useT } from './i18n';
 import { cn } from './lib/utils';
 
 interface SuggestedParent {
@@ -18,6 +19,7 @@ interface SuggestedParent {
  * (first launch, or after the active workspace was forgotten / deleted).
  */
 export function WorkspacePicker(): JSX.Element {
+  const t = useT();
   const known = useWorkspaceStore((s) => s.known);
   const setActive = useWorkspaceStore((s) => s.setActive);
   const create = useWorkspaceStore((s) => s.create);
@@ -44,7 +46,7 @@ export function WorkspacePicker(): JSX.Element {
     setError(null);
     const paths = await window.api.fs.openDialog({
       directory: true,
-      title: 'Choose your ReadWrite workspace',
+      title: t('workspace.dialog.pickExisting'),
     });
     if (!paths || paths.length === 0) return;
     setBusy(true);
@@ -60,7 +62,7 @@ export function WorkspacePicker(): JSX.Element {
   const onCreate = async (): Promise<void> => {
     setError(null);
     if (!parent.trim() || !name.trim()) {
-      setError('Pick a parent location and give the workspace a name.');
+      setError(t('workspace.create.errorRequired'));
       return;
     }
     setBusy(true);
@@ -76,7 +78,7 @@ export function WorkspacePicker(): JSX.Element {
   const browseParent = async (): Promise<void> => {
     const paths = await window.api.fs.openDialog({
       directory: true,
-      title: 'Pick a parent folder for the new workspace',
+      title: t('workspace.dialog.pickParent'),
     });
     if (!paths || paths.length === 0) return;
     setParent(paths[0]!);
@@ -86,31 +88,28 @@ export function WorkspacePicker(): JSX.Element {
     <div className="flex h-full w-full items-center justify-center bg-background p-8">
       <div className="w-full max-w-2xl space-y-8">
         <header className="space-y-2 text-center">
-          <h1 className="text-3xl font-semibold tracking-tight">Welcome to ReadWrite</h1>
-          <p className="text-sm text-muted-foreground">
-            A workspace is a folder where every document gets its own subfolder. Pick one to start —
-            you can switch or add more anytime.
-          </p>
+          <h1 className="text-3xl font-semibold tracking-tight">{t('picker.welcomeTitle')}</h1>
+          <p className="text-sm text-muted-foreground">{t('picker.welcomeSubtitle')}</p>
         </header>
 
         {mode === 'home' && (
           <div className="space-y-3">
             <ChoiceRow
               icon={FolderPlus}
-              title="Create a new workspace"
-              description="Recommended for first-time users. We'll suggest iCloud Drive on macOS."
+              title={t('picker.create.title')}
+              description={t('picker.create.description')}
               onClick={() => setMode('create')}
             />
             <ChoiceRow
               icon={FolderOpen}
-              title="Open an existing folder"
-              description="Already have a folder of notes? Point ReadWrite at it."
+              title={t('picker.openExisting.title')}
+              description={t('picker.openExisting.description')}
               onClick={onPickExisting}
             />
             {known.length > 0 && (
               <div className="pt-4">
                 <h2 className="px-1 pb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Recent workspaces
+                  {t('picker.recent.title')}
                 </h2>
                 <div className="space-y-1">
                   {known.map((w) => (
@@ -138,11 +137,8 @@ export function WorkspacePicker(): JSX.Element {
         {mode === 'create' && (
           <div className="space-y-5 rounded-lg border border-border bg-muted/20 p-6">
             <div className="space-y-1">
-              <h2 className="text-sm font-semibold">Where should the workspace live?</h2>
-              <p className="text-xs text-muted-foreground">
-                Pick a parent location. iCloud Drive is the easiest way to keep your notes synced
-                across Macs.
-              </p>
+              <h2 className="text-sm font-semibold">{t('picker.create.locationsTitle')}</h2>
+              <p className="text-xs text-muted-foreground">{t('picker.create.locationsDesc')}</p>
             </div>
 
             <div className="grid gap-2">
@@ -168,7 +164,7 @@ export function WorkspacePicker(): JSX.Element {
                   <div className="min-w-0 flex-1">
                     <div className="font-medium">
                       {s.label}
-                      {!s.exists && ' (not available)'}
+                      {!s.exists && ` ${t('workspace.create.notAvailable')}`}
                     </div>
                     <div className="truncate font-mono text-[10px] text-muted-foreground">
                       {s.path}
@@ -180,7 +176,7 @@ export function WorkspacePicker(): JSX.Element {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="parent">Or paste a custom location</Label>
+              <Label htmlFor="parent">{t('picker.create.customLocationLabel')}</Label>
               <div className="flex gap-2">
                 <Input
                   id="parent"
@@ -189,21 +185,21 @@ export function WorkspacePicker(): JSX.Element {
                   onChange={(e) => setParent(e.target.value)}
                 />
                 <Button variant="outline" onClick={browseParent}>
-                  <FolderOpen className="mr-2 h-4 w-4" /> Browse
+                  <FolderOpen className="mr-2 h-4 w-4" /> {t('common.browse')}
                 </Button>
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="name">Workspace name</Label>
+              <Label htmlFor="name">{t('workspace.create.nameLabel')}</Label>
               <Input
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="My Notes"
+                placeholder={t('workspace.create.namePlaceholder')}
               />
               <p className="text-[10px] text-muted-foreground">
-                Will be created as{' '}
+                {t('picker.create.preview')}{' '}
                 <span className="font-mono">
                   {parent.replace(/\/+$/, '') || '<parent>'}/{name || 'My Notes'}
                 </span>
@@ -219,10 +215,10 @@ export function WorkspacePicker(): JSX.Element {
 
             <div className="flex justify-between">
               <Button variant="ghost" onClick={() => setMode('home')} disabled={busy}>
-                Back
+                {t('common.back')}
               </Button>
               <Button onClick={onCreate} disabled={busy || !parent.trim() || !name.trim()}>
-                {busy ? 'Creating…' : 'Create workspace'}
+                {busy ? t('common.creating') : t('common.create')}
               </Button>
             </div>
           </div>

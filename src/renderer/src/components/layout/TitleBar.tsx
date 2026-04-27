@@ -33,6 +33,7 @@ import { useEditorStore } from '@/stores/editor';
 import { useWorkspaceStore } from '@/stores/workspace';
 import { useSettingsStore } from '@/stores/settings';
 import { useEditorCommandsStore } from '@/stores/editor-commands';
+import { useT } from '@/i18n';
 import { docBasename } from '@/lib/doc-io';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 
@@ -42,6 +43,7 @@ interface TitleBarProps {
 }
 
 export function TitleBar({ onNewDoc, onOpenDoc }: TitleBarProps): JSX.Element {
+  const t = useT();
   const path = useEditorStore((s) => s.path);
   const dirty = useEditorStore((s) => s.dirty);
   const active = useWorkspaceStore((s) => s.active);
@@ -86,7 +88,7 @@ export function TitleBar({ onNewDoc, onOpenDoc }: TitleBarProps): JSX.Element {
             <button
               className="flex max-w-[36rem] items-center gap-1 truncate text-xs text-muted-foreground transition-colors hover:text-foreground"
               onClick={onRevealDoc}
-              title="Reveal in Finder"
+              title={t('titlebar.tooltip.revealInFinder')}
             >
               <span className="opacity-50">/</span>
               <span className="truncate">{docBasename(path)}</span>
@@ -109,18 +111,18 @@ export function TitleBar({ onNewDoc, onOpenDoc }: TitleBarProps): JSX.Element {
                     </Button>
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
-                <TooltipContent>AI</TooltipContent>
+                <TooltipContent>{t('titlebar.tooltip.ai')}</TooltipContent>
               </Tooltip>
               <DropdownMenuContent align="end" className="w-72">
-                <DropdownMenuLabel>AI</DropdownMenuLabel>
+                <DropdownMenuLabel>{t('titlebar.ai.label')}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
 
                 <DropdownMenuItem onClick={() => requestAiCmd({ kind: 'blog' })}>
                   <Wand2 className="mr-2 h-4 w-4" />
                   <div className="flex flex-col">
-                    <span>Generate from reader…</span>
+                    <span>{t('titlebar.ai.generateFromReader')}</span>
                     <span className="text-[10px] text-muted-foreground">
-                      Uses external Claude CLI; pick style + template, review settings, then run
+                      {t('titlebar.ai.generateFromReader.hint')}
                     </span>
                   </div>
                 </DropdownMenuItem>
@@ -130,19 +132,19 @@ export function TitleBar({ onNewDoc, onOpenDoc }: TitleBarProps): JSX.Element {
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
                     <Sparkles className="mr-2 h-4 w-4" />
-                    Polish
+                    {t('titlebar.ai.polish')}
                   </DropdownMenuSubTrigger>
                   <DropdownMenuPortal>
                     <DropdownMenuSubContent className="w-56">
                       <DropdownMenuItem
                         onClick={() => requestAiCmd({ kind: 'polish', target: 'selection' })}
                       >
-                        <TextSelect className="mr-2 h-4 w-4" /> Selection
+                        <TextSelect className="mr-2 h-4 w-4" /> {t('titlebar.ai.target.selection')}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => requestAiCmd({ kind: 'polish', target: 'document' })}
                       >
-                        <ScrollText className="mr-2 h-4 w-4" /> Whole document
+                        <ScrollText className="mr-2 h-4 w-4" /> {t('titlebar.ai.target.document')}
                       </DropdownMenuItem>
                     </DropdownMenuSubContent>
                   </DropdownMenuPortal>
@@ -151,44 +153,44 @@ export function TitleBar({ onNewDoc, onOpenDoc }: TitleBarProps): JSX.Element {
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
                     <Languages className="mr-2 h-4 w-4" />
-                    Translate
+                    {t('titlebar.ai.translate')}
                   </DropdownMenuSubTrigger>
                   <DropdownMenuPortal>
                     <DropdownMenuSubContent className="w-64">
                       <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                        Selection →
+                        {t('titlebar.ai.translate.selectionLabel')}
                       </DropdownMenuLabel>
                       <DropdownMenuItem
                         onClick={() =>
                           requestAiCmd({ kind: 'translate', target: 'selection', lang: 'en' })
                         }
                       >
-                        English
+                        {t('titlebar.ai.translate.toEnglish')}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() =>
                           requestAiCmd({ kind: 'translate', target: 'selection', lang: 'zh' })
                         }
                       >
-                        中文
+                        {t('titlebar.ai.translate.toChinese')}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                        Whole document →
+                        {t('titlebar.ai.translate.documentLabel')}
                       </DropdownMenuLabel>
                       <DropdownMenuItem
                         onClick={() =>
                           requestAiCmd({ kind: 'translate', target: 'document', lang: 'en' })
                         }
                       >
-                        English
+                        {t('titlebar.ai.translate.toEnglish')}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() =>
                           requestAiCmd({ kind: 'translate', target: 'document', lang: 'zh' })
                         }
                       >
-                        中文
+                        {t('titlebar.ai.translate.toChinese')}
                       </DropdownMenuItem>
                     </DropdownMenuSubContent>
                   </DropdownMenuPortal>
@@ -196,21 +198,21 @@ export function TitleBar({ onNewDoc, onOpenDoc }: TitleBarProps): JSX.Element {
 
                 <DropdownMenuItem onClick={() => requestAiCmd({ kind: 'summarize' })}>
                   <FileSearch className="mr-2 h-4 w-4" />
-                  Summarize document
+                  {t('titlebar.ai.summarize')}
                 </DropdownMenuItem>
 
                 <DropdownMenuItem onClick={() => requestAiCmd({ kind: 'explain' })}>
                   <BookOpen className="mr-2 h-4 w-4" />
-                  Explain selection
+                  {t('titlebar.ai.explain')}
                 </DropdownMenuItem>
 
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => requestAiCmd({ kind: 'interpret' })}>
                   <HelpCircle className="mr-2 h-4 w-4" />
                   <div className="flex flex-col">
-                    <span>Interpret with prompt…</span>
+                    <span>{t('titlebar.ai.interpret')}</span>
                     <span className="text-[10px] text-muted-foreground">
-                      Custom prompt, review response, then insert
+                      {t('titlebar.ai.interpret.hint')}
                     </span>
                   </div>
                 </DropdownMenuItem>
@@ -225,7 +227,7 @@ export function TitleBar({ onNewDoc, onOpenDoc }: TitleBarProps): JSX.Element {
                   <FilePlus className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>New document (creates a new folder)</TooltipContent>
+              <TooltipContent>{t('titlebar.tooltip.newDoc')}</TooltipContent>
             </Tooltip>
           )}
 
@@ -236,7 +238,7 @@ export function TitleBar({ onNewDoc, onOpenDoc }: TitleBarProps): JSX.Element {
                   <FileText className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Open Markdown</TooltipContent>
+              <TooltipContent>{t('titlebar.tooltip.openDoc')}</TooltipContent>
             </Tooltip>
           )}
 
@@ -252,7 +254,7 @@ export function TitleBar({ onNewDoc, onOpenDoc }: TitleBarProps): JSX.Element {
                 <Settings className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Settings</TooltipContent>
+            <TooltipContent>{t('titlebar.tooltip.settings')}</TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -270,7 +272,9 @@ export function TitleBar({ onNewDoc, onOpenDoc }: TitleBarProps): JSX.Element {
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              {sidebarVisible ? 'Hide docs sidebar' : 'Show docs sidebar'}
+              {sidebarVisible
+                ? t('titlebar.tooltip.hideSidebar')
+                : t('titlebar.tooltip.showSidebar')}
             </TooltipContent>
           </Tooltip>
         </div>

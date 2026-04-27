@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useWorkspaceStore } from '@/stores/workspace';
+import { useT } from '@/i18n';
 import { Section, Field } from './Field';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,14 +12,17 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Folder, Plus, ExternalLink, EyeOff, Trash2, MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CreateWorkspaceDialog } from '../workspace/CreateWorkspaceDialog';
 
 export function WorkspacesPanel(): JSX.Element {
+  const t = useT();
   const known = useWorkspaceStore((s) => s.known);
   const active = useWorkspaceStore((s) => s.active);
   const load = useWorkspaceStore((s) => s.load);
   const setActive = useWorkspaceStore((s) => s.setActive);
   const forget = useWorkspaceStore((s) => s.forget);
   const trash = useWorkspaceStore((s) => s.trash);
+  const [createOpen, setCreateOpen] = useState(false);
 
   useEffect(() => {
     load().catch(() => null);
@@ -27,62 +31,35 @@ export function WorkspacesPanel(): JSX.Element {
   const onAddExisting = async (): Promise<void> => {
     const paths = await window.api.fs.openDialog({
       directory: true,
-      title: 'Pick an existing workspace folder',
+      title: t('workspace.dialog.pickExisting'),
     });
     if (!paths || paths.length === 0) return;
     await setActive(paths[0]!);
   };
 
-  const onAddNew = async (): Promise<void> => {
-    const paths = await window.api.fs.openDialog({
-      directory: true,
-      title: 'Pick a parent folder for the new workspace',
-    });
-    if (!paths || paths.length === 0) return;
-    const name = prompt('New workspace name:', 'My Notes');
-    if (!name) return;
-    const entry = await window.api.workspace.create({
-      parent: paths[0]!,
-      name,
-      activate: true,
-    });
-    await setActive(entry.path);
-  };
-
   const onForget = (path: string, name: string): void => {
-    if (
-      confirm(
-        `Forget workspace "${name}"?\n\n` +
-          'This only removes it from the list inside ReadWrite — the folder on disk and its documents are kept untouched.',
-      )
-    ) {
+    if (confirm(t('settings.workspaces.confirm.forget', { name }))) {
       forget(path).catch((err) => alert(`Forget failed: ${(err as Error).message}`));
     }
   };
 
   const onDelete = (path: string, name: string): void => {
-    if (
-      confirm(
-        `Delete workspace "${name}"?\n\n` +
-          'This moves the entire workspace folder (every document and image inside it) to the system Trash. ' +
-          'You can still restore it from Trash afterwards.',
-      )
-    ) {
+    if (confirm(t('settings.workspaces.confirm.delete', { name }))) {
       trash(path).catch((err) => alert(`Delete failed: ${(err as Error).message}`));
     }
   };
 
   return (
     <div className="space-y-8">
-      <Section title="Workspaces">
+      <Section title={t('settings.workspaces.title')}>
         <Field
-          label="Known workspaces"
-          description="Each workspace is a folder; documents inside it live in subfolders. Click Switch to make a workspace active. The ⋯ menu has Forget (remove from this list, keep on disk) and Delete (move the whole folder to Trash)."
+          label={t('settings.workspaces.list.label')}
+          description={t('settings.workspaces.list.description')}
         >
           <div className="space-y-1.5">
             {known.length === 0 && (
               <div className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-4 text-center text-xs text-muted-foreground">
-                No workspaces yet. Add one below.
+                {t('settings.workspaces.empty')}
               </div>
             )}
             {known.map((w) => {
@@ -111,12 +88,12 @@ export function WorkspacesPanel(): JSX.Element {
                   </div>
                   {!isActive && (
                     <Button size="sm" variant="outline" onClick={() => setActive(w.path)}>
-                      Switch
+                      {t('settings.workspaces.switch')}
                     </Button>
                   )}
                   {isActive && (
                     <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                      Active
+                      {t('settings.workspaces.activeBadge')}
                     </span>
                   )}
                   <DropdownMenu>
@@ -127,15 +104,16 @@ export function WorkspacesPanel(): JSX.Element {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-64">
                       <DropdownMenuItem onSelect={() => window.api.workspace.reveal(w.path)}>
-                        <ExternalLink className="mr-2 h-4 w-4" /> Reveal in Finder
+                        <ExternalLink className="mr-2 h-4 w-4" />{' '}
+                        {t('settings.workspaces.action.reveal')}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onSelect={() => onForget(w.path, w.name)}>
                         <EyeOff className="mr-2 h-4 w-4" />
                         <div className="flex flex-col">
-                          <span>Forget</span>
+                          <span>{t('settings.workspaces.action.forget')}</span>
                           <span className="text-[10px] text-muted-foreground">
-                            Remove from list, keep folder on disk
+                            {t('settings.workspaces.action.forget.hint')}
                           </span>
                         </div>
                       </DropdownMenuItem>
@@ -145,9 +123,9 @@ export function WorkspacesPanel(): JSX.Element {
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
                         <div className="flex flex-col">
-                          <span>Delete…</span>
+                          <span>{t('settings.workspaces.action.delete')}</span>
                           <span className="text-[10px] text-muted-foreground">
-                            Move folder to system Trash
+                            {t('settings.workspaces.action.delete.hint')}
                           </span>
                         </div>
                       </DropdownMenuItem>
@@ -158,15 +136,16 @@ export function WorkspacesPanel(): JSX.Element {
             })}
           </div>
           <div className="flex gap-2 pt-3">
-            <Button variant="outline" onClick={onAddNew}>
-              <Plus className="mr-2 h-4 w-4" /> Create new
+            <Button variant="outline" onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" /> {t('settings.workspaces.cta.createNew')}
             </Button>
             <Button variant="outline" onClick={onAddExisting}>
-              <Folder className="mr-2 h-4 w-4" /> Open existing folder
+              <Folder className="mr-2 h-4 w-4" /> {t('settings.workspaces.cta.openExisting')}
             </Button>
           </div>
         </Field>
       </Section>
+      <CreateWorkspaceDialog open={createOpen} onOpenChange={setCreateOpen} />
     </div>
   );
 }

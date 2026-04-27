@@ -69,8 +69,15 @@ export interface MarkdownDocument {
 
 export type ImagesDirMode = 'next-to-doc' | 'custom' | 'pictures';
 
+/**
+ * UI language. 'system' resolves to the OS / browser locale at runtime;
+ * 'en' / 'zh' are explicit overrides. Anything else is normalized to 'en'.
+ */
+export type UiLanguageSetting = 'system' | 'en' | 'zh';
+
 export interface AppSettings {
   theme: 'light' | 'dark' | 'system';
+  language: UiLanguageSetting;
   editorMode: 'wysiwyg' | 'source';
   fontSize: number;
   splitRatio: number;

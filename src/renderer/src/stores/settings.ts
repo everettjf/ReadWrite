@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { AppSettings } from '@shared/types';
+import { applyLanguage } from '@/i18n';
 
 interface SettingsState extends AppSettings {
   loaded: boolean;
@@ -9,6 +10,7 @@ interface SettingsState extends AppSettings {
 
 const DEFAULTS: AppSettings = {
   theme: 'system',
+  language: 'system',
   editorMode: 'wysiwyg',
   fontSize: 14,
   splitRatio: 0.5,
@@ -36,12 +38,14 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     const s = await window.api.settings.get();
     set({ ...s, loaded: true });
     applyTheme(s.theme);
+    applyLanguage(s.language);
     applyEditorVars(s);
   },
   update: async (patch) => {
     const next = await window.api.settings.set(patch);
     set({ ...next });
     if (patch.theme) applyTheme(next.theme);
+    if (patch.language !== undefined) applyLanguage(next.language);
     applyEditorVars(next);
   },
 }));
@@ -84,6 +88,7 @@ if (typeof window !== 'undefined') {
   window.api?.settings?.onChanged?.((next) => {
     useSettingsStore.setState({ ...next, loaded: true });
     applyTheme(next.theme);
+    applyLanguage(next.language);
     applyEditorVars(next);
   });
 }

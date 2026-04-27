@@ -9,6 +9,7 @@ import { readSecret, writeSecret, migrateSecretsFromLegacySettings, SECRET_KEYS 
 
 const DEFAULT_SETTINGS: AppSettings = {
   theme: 'system',
+  language: 'system',
   editorMode: 'wysiwyg',
   fontSize: 14,
   splitRatio: 0.5,

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useSettingsStore } from './stores/settings';
+import { useT } from './i18n';
 import { cn } from './lib/utils';
 import { Type, Image as ImageIcon, Sparkles, Send, Info, Palette, Folder } from 'lucide-react';
+import type { DictKey } from './i18n/locales/en';
 import { GeneralPanel } from './components/settings/GeneralPanel';
 import { EditorPanel } from './components/settings/EditorPanel';
 import { WorkspacesPanel } from './components/settings/WorkspacesPanel';
@@ -14,19 +16,20 @@ type SectionId = 'general' | 'workspaces' | 'editor' | 'images' | 'ai' | 'wechat
 
 const SECTIONS: Array<{
   id: SectionId;
-  label: string;
+  labelKey: DictKey;
   Icon: React.ComponentType<{ className?: string }>;
 }> = [
-  { id: 'general', label: 'General', Icon: Palette },
-  { id: 'workspaces', label: 'Workspaces', Icon: Folder },
-  { id: 'editor', label: 'Editor', Icon: Type },
-  { id: 'images', label: 'Images', Icon: ImageIcon },
-  { id: 'ai', label: 'AI', Icon: Sparkles },
-  { id: 'wechat', label: 'WeChat', Icon: Send },
-  { id: 'about', label: 'About', Icon: Info },
+  { id: 'general', labelKey: 'settings.section.general', Icon: Palette },
+  { id: 'workspaces', labelKey: 'settings.section.workspaces', Icon: Folder },
+  { id: 'editor', labelKey: 'settings.section.editor', Icon: Type },
+  { id: 'images', labelKey: 'settings.section.images', Icon: ImageIcon },
+  { id: 'ai', labelKey: 'settings.section.ai', Icon: Sparkles },
+  { id: 'wechat', labelKey: 'settings.section.wechat', Icon: Send },
+  { id: 'about', labelKey: 'settings.section.about', Icon: Info },
 ];
 
 export function SettingsApp(): JSX.Element {
+  const t = useT();
   const load = useSettingsStore((s) => s.load);
   const loaded = useSettingsStore((s) => s.loaded);
   const [active, setActive] = useState<SectionId>('general');
@@ -38,7 +41,7 @@ export function SettingsApp(): JSX.Element {
   if (!loaded) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-        Loading…
+        {t('common.loading')}
       </div>
     );
   }
@@ -50,13 +53,13 @@ export function SettingsApp(): JSX.Element {
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       >
         <div className="px-4 pb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Settings
+          {t('settings.title')}
         </div>
         <nav
           className="flex flex-col gap-0.5 px-2"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
-          {SECTIONS.map(({ id, label, Icon }) => (
+          {SECTIONS.map(({ id, labelKey, Icon }) => (
             <button
               key={id}
               onClick={() => setActive(id)}
@@ -68,7 +71,7 @@ export function SettingsApp(): JSX.Element {
               )}
             >
               <Icon className="h-4 w-4" />
-              {label}
+              {t(labelKey)}
             </button>
           ))}
         </nav>
