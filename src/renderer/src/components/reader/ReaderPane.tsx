@@ -15,6 +15,7 @@ import {
   openCodeFolderFromDialog,
 } from '@/lib/open-tab';
 import { toGithubWebUrl } from '@/lib/utils';
+import { RecentReaderList } from './RecentReaderList';
 
 interface ReaderPaneProps {
   onStartSnip?: () => void;
@@ -71,8 +72,8 @@ function EmptyState(): JSX.Element {
   };
 
   return (
-    <div className="flex h-full items-center justify-center px-6">
-      <div className="w-full max-w-md space-y-5">
+    <div className="h-full overflow-y-auto">
+      <div className="mx-auto w-full max-w-md space-y-5 px-6 py-12">
         <div className="space-y-1 text-center text-muted-foreground">
           <div className="text-sm">Open a URL, GitHub repo, PDF, EPUB, or local code folder.</div>
           <div className="text-xs opacity-75">
@@ -104,6 +105,13 @@ function EmptyState(): JSX.Element {
           <Button variant="outline" onClick={() => openCodeFolderFromDialog()}>
             <Code2 className="mr-2 h-4 w-4" /> Code
           </Button>
+        </div>
+
+        <div className="space-y-2 pt-4">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Recent reader items
+          </h2>
+          <RecentReaderList limit={12} />
         </div>
       </div>
     </div>
