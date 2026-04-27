@@ -151,10 +151,10 @@ Output lands in `release/<version>/`.
 ### Cross-platform via GitHub Actions
 
 ```bash
-./deploy.sh release 0.1.0    # tags v0.1.0, pushes, triggers CI
+./deploy.sh release <version>  # e.g. 0.2.0 — tags v0.2.0, pushes, triggers CI
 ```
 
-The `release.yml` workflow builds .dmg / .exe / .AppImage / .deb on a three-OS matrix and uploads everything to a new GitHub Release. Notes are auto-extracted from the matching `## [0.1.0]` block in `CHANGELOG.md`.
+The `release.yml` workflow builds .dmg / .exe / .AppImage / .deb on a three-OS matrix and uploads everything to a new GitHub Release. Notes are auto-extracted from the matching `## [<version>]` block in `CHANGELOG.md`.
 
 > **Heads-up**: artifacts ship **unsigned** today. macOS users open with right-click → Open the first time; Windows users acknowledge the SmartScreen warning. Real Apple Developer + Authenticode signing is on the roadmap.
 
