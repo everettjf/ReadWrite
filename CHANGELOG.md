@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _Nothing yet._
 
+## [0.1.5] — 2026-04-28
+
+### Fixed
+
+- **ci**: tighten release asset filter to ReadWrite-* (e5c5550)
+
 ## [0.1.4] — 2026-04-28
 
 ### Fixed
