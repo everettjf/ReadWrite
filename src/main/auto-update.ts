@@ -35,14 +35,19 @@ export function initAutoUpdater(): void {
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
 
+  const current = app.getVersion();
+  console.log(`[updater] init — running v${current}`);
+
   autoUpdater.on('checking-for-update', () => {
-    console.log('[updater] checking for update');
+    console.log(`[updater] checking for update (current v${current})`);
   });
   autoUpdater.on('update-available', (info) => {
-    console.log('[updater] update available:', info?.version);
+    console.log(`[updater] update available: v${info?.version} (running v${current})`);
   });
-  autoUpdater.on('update-not-available', () => {
-    console.log('[updater] no update');
+  autoUpdater.on('update-not-available', (info) => {
+    console.log(
+      `[updater] no update (running v${current}, latest published v${info?.version ?? '?'})`,
+    );
   });
   autoUpdater.on('download-progress', (p) => {
     console.log(
