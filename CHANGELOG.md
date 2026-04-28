@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _Nothing yet._
 
+## [0.1.2] — 2026-04-28
+
+### Fixed
+
+- **packaging**: hoist node_modules; wire up electron-updater (27017d0)
+
 ## [0.1.1] — 2026-04-27
 
 ### Added
