@@ -62,18 +62,21 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: readwrite-${{ matrix.os }}
-          # Patterns intentionally specific. `ReadWrite*.exe` excludes
-          # `elevate.exe` — the NSIS UAC helper electron-builder leaves
-          # in the build dir as a sidecar; users shouldn't see it as a
-          # release asset.
+          # `ReadWrite-*` (with the dash) intentionally excludes:
+          #   - elevate.exe              — NSIS UAC sidecar
+          #   - win-unpacked/ReadWrite.exe — raw unpacked binary
+          #   - linux-unpacked/ReadWrite — same idea on Linux
+          # All shipping products are named `ReadWrite-<version>-<…>.<ext>`
+          # via electron-builder.yml's artifactName fields, so the dash is
+          # the canonical separator between "real product" and "scaffolding".
           path: |
-            release/**/ReadWrite*.dmg
-            release/**/ReadWrite*.exe
-            release/**/ReadWrite*.AppImage
-            release/**/ReadWrite*.deb
-            release/**/ReadWrite*.zip
-            release/**/ReadWrite*.dmg.blockmap
-            release/**/ReadWrite*.exe.blockmap
+            release/**/ReadWrite-*.dmg
+            release/**/ReadWrite-*.exe
+            release/**/ReadWrite-*.AppImage
+            release/**/ReadWrite-*.deb
+            release/**/ReadWrite-*.zip
+            release/**/ReadWrite-*.dmg.blockmap
+            release/**/ReadWrite-*.exe.blockmap
             release/**/latest*.yml
           if-no-files-found: ignore
           retention-days: 14
@@ -94,17 +97,17 @@ jobs:
       - name: Flatten artifact tree
         run: |
           mkdir -p release-files
-          # Same name-prefix restriction as the upload step — keeps internal
-          # NSIS / electron-builder helpers (elevate.exe etc.) out of the
-          # final release.
+          # Same hyphenated prefix as the upload step (see comment there) —
+          # keeps internal helpers (elevate.exe, win-unpacked/ReadWrite.exe,
+          # linux-unpacked/ReadWrite) out of the final release.
           find artifacts -type f \( \
-            -name 'ReadWrite*.dmg' -o \
-            -name 'ReadWrite*.exe' -o \
-            -name 'ReadWrite*.AppImage' -o \
-            -name 'ReadWrite*.deb' -o \
-            -name 'ReadWrite*.zip' -o \
-            -name 'ReadWrite*.dmg.blockmap' -o \
-            -name 'ReadWrite*.exe.blockmap' -o \
+            -name 'ReadWrite-*.dmg' -o \
+            -name 'ReadWrite-*.exe' -o \
+            -name 'ReadWrite-*.AppImage' -o \
+            -name 'ReadWrite-*.deb' -o \
+            -name 'ReadWrite-*.zip' -o \
+            -name 'ReadWrite-*.dmg.blockmap' -o \
+            -name 'ReadWrite-*.exe.blockmap' -o \
             -name 'latest*.yml' \
           \) -exec cp {} release-files/ \;
           ls -la release-files
