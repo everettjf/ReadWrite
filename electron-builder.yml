@@ -55,4 +55,16 @@ linux:
 appImage:
   artifactName: ${productName}-${version}-${arch}.${ext}
 npmRebuild: false
-publish: null
+# Auto-update channel. With provider: github, electron-builder writes
+# `latest-mac.yml`, `latest.yml`, and `latest-linux.yml` next to the
+# installers; electron-updater (in the running app) reads them off the
+# matching GitHub Release at runtime.
+#
+# Note: macOS auto-update only completes when the app is signed and
+# notarized. Until we wire up a Developer ID, mac users will be able to
+# *check* and *download* updates but quitAndInstall() will fail. Windows
+# / Linux work without signing.
+publish:
+  provider: github
+  owner: everettjf
+  repo: ReadWrite

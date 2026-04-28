@@ -7,6 +7,7 @@ import { initDatabase, closeDatabase } from './db';
 import { TabManager } from './tabs';
 import { FileWatcherHub } from './watchers/file-watcher';
 import { buildApplicationMenu } from './menu';
+import { initAutoUpdater } from './auto-update';
 
 const APP_NAME = 'ReadWrite';
 
@@ -73,6 +74,7 @@ function bootstrap(): void {
 
 app.whenReady().then(() => {
   bootstrap();
+  initAutoUpdater();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
