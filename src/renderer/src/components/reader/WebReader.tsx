@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowLeft, ArrowRight, RotateCw, ExternalLink } from 'lucide-react';
 import { useTabsStore } from '@/stores/tabs';
+import { useReaderSelectionStore } from '@/stores/reader-selection';
 
 interface WebReaderProps {
   tab: WebTab;
@@ -72,6 +73,34 @@ export function WebReader({ tab, active }: WebReaderProps): JSX.Element {
     });
     return off;
   }, [tab.id, updateTab]);
+
+  // Receive selection events from the web-tab preload (relayed by main
+  // with rect already translated to main-window viewport coords). Only
+  // react when the event is for this tab AND this tab is currently
+  // active — otherwise we'd surface a selection from a backgrounded tab.
+  useEffect(() => {
+    if (!active) return;
+    const setReaderSelection = useReaderSelectionStore.getState().set;
+    const clearReaderSelection = useReaderSelectionStore.getState().clear;
+    const off = window.api.tabs.onSelectionChange((evt) => {
+      if (evt.tabId !== tab.id) return;
+      if (!evt.text.trim() || !evt.rect) {
+        if (useReaderSelectionStore.getState().source === 'web') {
+          clearReaderSelection();
+        }
+        return;
+      }
+      setReaderSelection({ text: evt.text, source: 'web', rect: evt.rect });
+    });
+    return () => {
+      off();
+      // Drop pending selection when the tab loses active status so the
+      // toolbar doesn't linger over the next tab.
+      if (useReaderSelectionStore.getState().source === 'web') {
+        clearReaderSelection();
+      }
+    };
+  }, [tab.id, active]);
 
   const onNavigate = async (): Promise<void> => {
     const url = address.startsWith('http') ? address : `https://${address}`;

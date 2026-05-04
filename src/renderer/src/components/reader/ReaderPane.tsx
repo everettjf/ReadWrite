@@ -16,6 +16,7 @@ import {
 } from '@/lib/open-tab';
 import { toGithubWebUrl } from '@/lib/utils';
 import { RecentReaderList } from './RecentReaderList';
+import { ReaderSelectionToolbar } from './ReaderSelectionToolbar';
 
 interface ReaderPaneProps {
   onStartSnip?: () => void;
@@ -59,6 +60,7 @@ export function ReaderPane({ onStartSnip }: ReaderPaneProps): JSX.Element {
         {/* Void touch of activeTab for React compiler */}
         <span className="hidden">{activeTab?.id}</span>
       </div>
+      <ReaderSelectionToolbar />
     </div>
   );
 }

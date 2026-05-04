@@ -22,6 +22,17 @@ interface AIInterpretDialogProps {
   onCancel: () => void;
   /** Called with the chosen markdown (the AI response, edited or not) when the user confirms. */
   onInsert: (markdown: string, target: InsertTarget) => void;
+  /**
+   * 'editor-selection' (default) — selectionText comes from the editor;
+   * the user can choose to operate on it or on the whole document, and
+   * inserting back can replace the selection.
+   * 'reader-excerpt' — selectionText is a passage from the reader pane;
+   * there's no editor selection to replace, so the source is fixed and
+   * the only outputs are insert-at-cursor / append-to-document.
+   */
+  mode?: 'editor-selection' | 'reader-excerpt';
+  /** Initial prompt — overrides the built-in '解读一下' default. */
+  defaultPrompt?: string;
 }
 
 export type InsertTarget = 'replace-selection' | 'insert-after-selection' | 'append-to-doc';
@@ -39,10 +50,13 @@ export function AIInterpretDialog({
   documentText,
   onCancel,
   onInsert,
+  mode = 'editor-selection',
+  defaultPrompt,
 }: AIInterpretDialogProps): JSX.Element {
-  const [prompt, setPrompt] = useState('解读一下');
+  const isReaderExcerpt = mode === 'reader-excerpt';
+  const [prompt, setPrompt] = useState(defaultPrompt || '解读一下');
   const [source, setSource] = useState<'selection' | 'document'>(
-    selectionText.trim() ? 'selection' : 'document',
+    isReaderExcerpt || selectionText.trim() ? 'selection' : 'document',
   );
   const [response, setResponse] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -54,10 +68,10 @@ export function AIInterpretDialog({
       setResponse(null);
       setError(null);
       setBusy(false);
-      setSource(selectionText.trim() ? 'selection' : 'document');
-      setPrompt('解读一下');
+      setSource(isReaderExcerpt || selectionText.trim() ? 'selection' : 'document');
+      setPrompt(defaultPrompt || '解读一下');
     }
-  }, [open, selectionText]);
+  }, [open, selectionText, isReaderExcerpt, defaultPrompt]);
 
   const run = async (): Promise<void> => {
     setError(null);
@@ -129,30 +143,41 @@ export function AIInterpretDialog({
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label>Source</Label>
-            <div className="flex gap-3 text-sm">
-              <label className="flex items-center gap-1.5">
-                <input
-                  type="radio"
-                  checked={source === 'selection'}
-                  disabled={!hasSelection}
-                  onChange={() => setSource('selection')}
-                />
-                <span className={hasSelection ? '' : 'text-muted-foreground'}>
-                  Selection {hasSelection ? `(${selectionText.length} chars)` : '(none)'}
-                </span>
-              </label>
-              <label className="flex items-center gap-1.5">
-                <input
-                  type="radio"
-                  checked={source === 'document'}
-                  onChange={() => setSource('document')}
-                />
-                <span>Whole document ({documentText.length} chars)</span>
-              </label>
+          {isReaderExcerpt ? (
+            <div className="space-y-1.5">
+              <Label>Reader excerpt ({selectionText.length} chars)</Label>
+              <div className="max-h-32 overflow-y-auto rounded-md border border-border bg-muted/30 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+                {selectionText.length > 400
+                  ? `${selectionText.slice(0, 200)} … ${selectionText.slice(-200)}`
+                  : selectionText}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-1.5">
+              <Label>Source</Label>
+              <div className="flex gap-3 text-sm">
+                <label className="flex items-center gap-1.5">
+                  <input
+                    type="radio"
+                    checked={source === 'selection'}
+                    disabled={!hasSelection}
+                    onChange={() => setSource('selection')}
+                  />
+                  <span className={hasSelection ? '' : 'text-muted-foreground'}>
+                    Selection {hasSelection ? `(${selectionText.length} chars)` : '(none)'}
+                  </span>
+                </label>
+                <label className="flex items-center gap-1.5">
+                  <input
+                    type="radio"
+                    checked={source === 'document'}
+                    onChange={() => setSource('document')}
+                  />
+                  <span>Whole document ({documentText.length} chars)</span>
+                </label>
+              </div>
+            </div>
+          )}
 
           <Button onClick={run} disabled={busy || !prompt.trim()}>
             {busy ? (
@@ -191,7 +216,15 @@ export function AIInterpretDialog({
           <Button variant="ghost" onClick={onCancel}>
             Cancel
           </Button>
-          {response && hasSelection && source === 'selection' && (
+          {response && isReaderExcerpt && (
+            <>
+              <Button variant="outline" onClick={() => handleInsert('insert-after-selection')}>
+                Insert at cursor
+              </Button>
+              <Button onClick={() => handleInsert('append-to-doc')}>Append to document</Button>
+            </>
+          )}
+          {response && !isReaderExcerpt && hasSelection && source === 'selection' && (
             <>
               <Button variant="outline" onClick={() => handleInsert('insert-after-selection')}>
                 Insert after selection
@@ -199,7 +232,7 @@ export function AIInterpretDialog({
               <Button onClick={() => handleInsert('replace-selection')}>Replace selection</Button>
             </>
           )}
-          {response && (!hasSelection || source === 'document') && (
+          {response && !isReaderExcerpt && (!hasSelection || source === 'document') && (
             <Button onClick={() => handleInsert('append-to-doc')}>Append to document</Button>
           )}
         </DialogFooter>

@@ -42,6 +42,18 @@ export const en = {
   'titlebar.ai.interpret': 'Interpret with prompt…',
   'titlebar.ai.interpret.hint': 'Custom prompt, review response, then insert',
 
+  // Reader-side selection toolbar (floats above a non-empty selection in the reader pane).
+  'reader.selection.summarize': 'Summarize → notes',
+  'reader.selection.translate': 'Translate → notes',
+  'reader.selection.interpret': 'Interpret…',
+  'reader.selection.custom': 'Custom…',
+  'reader.selection.prompt.summarize':
+    'Summarize this passage in 3 bullets, then close with a single-line takeaway.',
+  'reader.selection.prompt.translate':
+    'Translate this passage to natural, idiomatic Chinese. Return only the translation.',
+  'reader.selection.prompt.interpret':
+    'Interpret this passage: background, key points, and what it implies for me — one short paragraph each.',
+
   // Workspace switcher dropdown.
   'workspace.menu.title': 'Workspaces',
   'workspace.menu.active': 'active',

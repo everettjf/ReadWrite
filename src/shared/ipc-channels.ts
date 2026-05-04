@@ -14,6 +14,12 @@ export const IPC = {
   // Broadcast from main → renderer
   TAB_STATE_CHANGED: 'tab:state-changed',
 
+  // Selection inside a web/github reader tab.
+  // Inbound (web-tab preload → main, raw text + WebContentsView-local rect).
+  WEB_TAB_SELECTION_INBOUND: 'web-tab:selection',
+  // Outbound (main → renderer, with rect translated to main-window viewport).
+  WEB_TAB_SELECTION_CHANGED: 'web-tab:selection-changed',
+
   // Screenshot
   SCREENSHOT_TAB: 'screenshot:tab',
   SCREENSHOT_MAIN_WINDOW: 'screenshot:main-window',

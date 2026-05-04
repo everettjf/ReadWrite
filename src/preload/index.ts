@@ -62,6 +62,18 @@ const api = {
       ipcRenderer.on(IPC.TAB_STATE_CHANGED, handler);
       return () => ipcRenderer.off(IPC.TAB_STATE_CHANGED, handler);
     },
+    onSelectionChange: (
+      listener: (evt: {
+        tabId: string;
+        text: string;
+        rect: { top: number; left: number; width: number; height: number } | null;
+      }) => void,
+    ): (() => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, payload: Parameters<typeof listener>[0]) =>
+        listener(payload);
+      ipcRenderer.on(IPC.WEB_TAB_SELECTION_CHANGED, handler);
+      return () => ipcRenderer.off(IPC.WEB_TAB_SELECTION_CHANGED, handler);
+    },
   },
 
   screenshot: {

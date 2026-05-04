@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CodeTab, FileTreeEntry } from '@shared/types';
-import Editor from '@monaco-editor/react';
+import Editor, { type OnMount } from '@monaco-editor/react';
+import type { editor as MonacoEditor } from 'monaco-editor';
 import { ChevronRight, ChevronDown, File, Folder } from 'lucide-react';
 import { cn, extname } from '@/lib/utils';
 import { useTabsStore } from '@/stores/tabs';
+import { useReaderSelectionStore } from '@/stores/reader-selection';
 
 const LANG_MAP: Record<string, string> = {
   '.ts': 'typescript',
@@ -43,6 +45,55 @@ export function CodeReader({ tab }: CodeReaderProps): JSX.Element {
   const [activeFile, setActiveFile] = useState<string | null>(tab.activeFile ?? null);
   const [content, setContent] = useState('');
   const updateTab = useTabsStore((s) => s.updateTab);
+  const setReaderSelection = useReaderSelectionStore((s) => s.set);
+  const clearReaderSelection = useReaderSelectionStore((s) => s.clear);
+  const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
+
+  // When the reader unmounts (tab closed / switched), drop any pending
+  // selection so the toolbar doesn't linger over the next reader.
+  useEffect(() => {
+    return () => clearReaderSelection();
+  }, [clearReaderSelection]);
+
+  const handleMount: OnMount = (editor) => {
+    editorRef.current = editor;
+    const update = (): void => {
+      const sel = editor.getSelection();
+      const model = editor.getModel();
+      if (!sel || !model || sel.isEmpty()) {
+        clearReaderSelection();
+        return;
+      }
+      const text = model.getValueInRange(sel);
+      if (!text.trim()) {
+        clearReaderSelection();
+        return;
+      }
+      const startVisible = editor.getScrolledVisiblePosition(sel.getStartPosition());
+      const endVisible = editor.getScrolledVisiblePosition(sel.getEndPosition());
+      if (!startVisible) return;
+      const node = editor.getDomNode();
+      if (!node) return;
+      const editorRect = node.getBoundingClientRect();
+      // Center horizontally between start and end of the selection (works
+      // well for single-line; for multi-line we still anchor near the
+      // first line which is fine for an above-selection toolbar).
+      const left =
+        editorRect.left + (startVisible.left + (endVisible?.left ?? startVisible.left)) / 2;
+      setReaderSelection({
+        text,
+        source: 'code',
+        rect: {
+          top: editorRect.top + startVisible.top,
+          left,
+          width: 0,
+          height: startVisible.height,
+        },
+      });
+    };
+    editor.onDidChangeCursorSelection(() => update());
+    editor.onDidScrollChange(() => update());
+  };
 
   useEffect(() => {
     window.api.fs
@@ -92,6 +143,7 @@ export function CodeReader({ tab }: CodeReaderProps): JSX.Element {
               value={content}
               language={language}
               theme="vs-dark"
+              onMount={handleMount}
               options={{
                 readOnly: true,
                 minimap: { enabled: false },

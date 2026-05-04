@@ -1,8 +1,21 @@
-import { WebContentsView, nativeImage } from 'electron';
+import { WebContentsView, ipcMain, nativeImage } from 'electron';
 import type { BrowserWindow } from 'electron';
+import { join } from 'node:path';
 import { nanoid } from 'nanoid';
 import type { TabBounds, Tab, ScreenshotResult } from '@shared/types';
 import { IPC } from '@shared/ipc-channels';
+
+interface SelectionRect {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+}
+
+interface SelectionInboundPayload {
+  text: string;
+  rect: SelectionRect | null;
+}
 
 interface ManagedTab {
   id: string;
@@ -17,8 +30,12 @@ interface ManagedTab {
 export class TabManager {
   private tabs = new Map<string, ManagedTab>();
   private activeTabId: string | null = null;
+  /** webContents.id → tab id, for routing the selection IPC back to a tab. */
+  private byWebContentsId = new Map<number, string>();
 
-  constructor(private win: BrowserWindow) {}
+  constructor(private win: BrowserWindow) {
+    this.registerSelectionRelay();
+  }
 
   createWebTab(url: string, kind: 'web' | 'github' = 'web'): Tab {
     const id = nanoid(10);
@@ -27,6 +44,9 @@ export class TabManager {
         contextIsolation: true,
         nodeIntegration: false,
         sandbox: true,
+        // Mirrors the path resolution used for the main preload in
+        // src/main/index.ts. Built output: out/preload/web-tab.mjs.
+        preload: join(__dirname, '../preload/web-tab.mjs'),
       },
     });
 
@@ -66,6 +86,7 @@ export class TabManager {
     view.setVisible(false);
 
     this.tabs.set(id, managed);
+    this.byWebContentsId.set(view.webContents.id, id);
 
     return {
       id,
@@ -86,6 +107,7 @@ export class TabManager {
     }
     // WebContentsView cleanup — close its webContents
     try {
+      this.byWebContentsId.delete(t.view.webContents.id);
       t.view.webContents.close();
     } catch {
       // ignore
@@ -239,6 +261,33 @@ export class TabManager {
       loading: wc.isLoading(),
       canGoBack: wc.navigationHistory.canGoBack(),
       canGoForward: wc.navigationHistory.canGoForward(),
+    });
+  }
+
+  /**
+   * Receive selection events from web-tab preloads, translate the rect
+   * from WebContentsView-local coords into main-window viewport coords
+   * by adding the tab's bounds offset, and forward to the renderer.
+   */
+  private registerSelectionRelay(): void {
+    ipcMain.on(IPC.WEB_TAB_SELECTION_INBOUND, (event, payload: SelectionInboundPayload) => {
+      const tabId = this.byWebContentsId.get(event.sender.id);
+      if (!tabId) return;
+      const tab = this.tabs.get(tabId);
+      if (!tab || this.win.isDestroyed()) return;
+      const translated = payload.rect
+        ? {
+            top: payload.rect.top + tab.bounds.y,
+            left: payload.rect.left + tab.bounds.x,
+            width: payload.rect.width,
+            height: payload.rect.height,
+          }
+        : null;
+      this.win.webContents.send(IPC.WEB_TAB_SELECTION_CHANGED, {
+        tabId,
+        text: payload.text,
+        rect: translated,
+      });
     });
   }
 }

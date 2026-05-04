@@ -3,6 +3,7 @@ import type { PdfTab } from '@shared/types';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronUp, ZoomIn, ZoomOut } from 'lucide-react';
 import { useTabsStore } from '@/stores/tabs';
+import { useReaderSelectionStore } from '@/stores/reader-selection';
 
 // pdfjs worker — set up globally
 import * as pdfjsLib from 'pdfjs-dist';
@@ -15,21 +16,28 @@ interface PdfReaderProps {
   tab: PdfTab;
 }
 
+interface RenderedTextLayer {
+  cancel(): void;
+}
+
 /**
  * Continuous-scroll PDF reader.
  *
- * All pages live in one scroll container, stacked vertically. Scrolling
- * the wheel walks the whole document; the toolbar's prev/next buttons
- * `scrollIntoView` the adjacent page (smooth). Zoom +/- re-renders all
- * pages at the new scale. The current page indicator updates from the
- * scroll position, so opening the toolbar's < or > always reflects what
- * the reader is actually looking at.
+ * All pages live in one scroll container, stacked vertically. Each page is
+ * a <canvas> with rendered glyphs **plus** a transparent text layer that
+ * mirrors those glyphs as positioned <span>s — without it, the canvas is
+ * unselectable. The text layer is what powers "select a passage → AI →
+ * insert into note".
  */
 export function PdfReader({ tab }: PdfReaderProps): JSX.Element {
   const stageRef = useRef<HTMLDivElement>(null);
   const pageRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const textLayerRefs = useRef<Array<RenderedTextLayer | null>>([]);
   const rafRef = useRef<number | null>(null);
   const restoredInitialPageRef = useRef(false);
+
+  const setReaderSelection = useReaderSelectionStore((s) => s.set);
+  const clearReaderSelection = useReaderSelectionStore((s) => s.clear);
 
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
   const [scale, setScale] = useState(1.2);
@@ -46,6 +54,7 @@ export function PdfReader({ tab }: PdfReaderProps): JSX.Element {
       const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
       if (cancelled) return;
       pageRefs.current = new Array(pdf.numPages).fill(null);
+      textLayerRefs.current = new Array(pdf.numPages).fill(null);
       setDoc(pdf);
       setNumPages(pdf.numPages);
       restoredInitialPageRef.current = false;
@@ -56,9 +65,15 @@ export function PdfReader({ tab }: PdfReaderProps): JSX.Element {
     };
   }, [tab.path]);
 
-  // Render every page sequentially on doc / scale change.
-  // Sequential (vs parallel) keeps pdfjs's worker happy and avoids
-  // a render burst spike when zooming a long PDF.
+  // Drop pending selection on unmount so the toolbar doesn't linger over
+  // the next reader.
+  useEffect(() => {
+    return () => clearReaderSelection();
+  }, [clearReaderSelection]);
+
+  // Render every page sequentially on doc / scale change. Sequential (vs
+  // parallel) keeps pdfjs's worker happy and avoids a render burst spike
+  // when zooming a long PDF.
   useEffect(() => {
     if (!doc) return;
     let cancelled = false;
@@ -68,27 +83,56 @@ export function PdfReader({ tab }: PdfReaderProps): JSX.Element {
         const wrap = pageRefs.current[p - 1];
         if (!wrap) continue;
         const canvas = wrap.querySelector('canvas');
-        if (!canvas) continue;
+        const textLayerDiv = wrap.querySelector(
+          'div[data-pdf-text-layer]',
+        ) as HTMLDivElement | null;
+        if (!canvas || !textLayerDiv) continue;
         try {
           const page = await doc.getPage(p);
           const viewport = page.getViewport({ scale });
           canvas.width = viewport.width;
           canvas.height = viewport.height;
-          // Pin the wrapper size so the layout doesn't reflow as later
-          // pages render in (avoids snapping the user's scroll position).
+          // Pin wrapper size so layout doesn't reflow as later pages
+          // render in (avoids snapping the user's scroll position).
           wrap.style.width = `${viewport.width}px`;
           wrap.style.height = `${viewport.height}px`;
+          textLayerDiv.style.width = `${viewport.width}px`;
+          textLayerDiv.style.height = `${viewport.height}px`;
           if (cancelled) return;
           const ctx = canvas.getContext('2d');
           if (!ctx) continue;
           await page.render({ canvasContext: ctx, viewport }).promise;
+          if (cancelled) return;
+          // Cancel any prior text layer for this page (zoom triggers a
+          // full re-render).
+          textLayerRefs.current[p - 1]?.cancel();
+          textLayerDiv.replaceChildren();
+          const textContent = await page.getTextContent();
+          if (cancelled) return;
+          const layer = new pdfjsLib.TextLayer({
+            textContentSource: textContent,
+            container: textLayerDiv,
+            viewport,
+          });
+          textLayerRefs.current[p - 1] = layer;
+          await layer.render();
         } catch (err) {
-          console.warn(`[pdf] render page ${p} failed:`, err);
+          // RenderingCancelledException is a normal part of the lifecycle
+          // (zoom while rendering); only surface real failures.
+          const msg = (err as Error)?.message ?? '';
+          if (!msg.includes('cancelled')) {
+            console.warn(`[pdf] render page ${p} failed:`, err);
+          }
         }
       }
     })();
     return () => {
       cancelled = true;
+      // Cancel any in-flight text layer renders so they don't try to
+      // mutate divs that the next render pass has just cleared.
+      for (const layer of textLayerRefs.current) {
+        layer?.cancel();
+      }
     };
   }, [doc, numPages, scale]);
 
@@ -98,7 +142,6 @@ export function PdfReader({ tab }: PdfReaderProps): JSX.Element {
     if (restoredInitialPageRef.current) return;
     const target = Math.min(Math.max(tab.page ?? 1, 1), numPages);
     if (target === 1) {
-      // Page 1 is the natural top — no scroll needed.
       restoredInitialPageRef.current = true;
       return;
     }
@@ -109,14 +152,14 @@ export function PdfReader({ tab }: PdfReaderProps): JSX.Element {
     });
   }, [doc, numPages, tab.page]);
 
-  // Track current page from scroll position (rAF-throttled so very
-  // long PDFs don't block scrolling).
+  // Track current page from scroll position (rAF-throttled so very long
+  // PDFs don't block scrolling).
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage || numPages === 0) return;
 
     const sample = (): void => {
-      const offset = stage.scrollTop + stage.clientHeight * 0.25; // bias to ~quarter screen
+      const offset = stage.scrollTop + stage.clientHeight * 0.25;
       let p = 1;
       for (let i = 0; i < numPages; i += 1) {
         const wrap = pageRefs.current[i];
@@ -143,12 +186,56 @@ export function PdfReader({ tab }: PdfReaderProps): JSX.Element {
     };
   }, [numPages]);
 
-  // Persist the current page back into the tab metadata so reopening
-  // the tab puts the user back where they were.
+  // Persist current page back into tab metadata.
   useEffect(() => {
     if (!doc) return;
     updateTab(tab.id, { page: currentPage } as Partial<PdfTab>);
   }, [currentPage, doc, tab.id, updateTab]);
+
+  // Selection capture. Listen for selection changes on the stage's
+  // document and only react when the selection is inside our stage. We
+  // debounce because selectionchange fires on every keystroke.
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const onSelChange = (): void => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        const sel = window.getSelection();
+        const text = sel?.toString() ?? '';
+        if (!text.trim() || !sel || sel.rangeCount === 0) {
+          // Only clear if we previously held the selection — otherwise
+          // we'd thrash the store every time the editor's selection
+          // changes too.
+          if (
+            sel &&
+            sel.anchorNode &&
+            stage.contains(sel.anchorNode) === false &&
+            useReaderSelectionStore.getState().source !== 'pdf'
+          ) {
+            return;
+          }
+          clearReaderSelection();
+          return;
+        }
+        const anchor = sel.anchorNode;
+        if (!anchor || !stage.contains(anchor)) return;
+        const range = sel.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        setReaderSelection({
+          text,
+          source: 'pdf',
+          rect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height },
+        });
+      }, 80);
+    };
+    document.addEventListener('selectionchange', onSelChange);
+    return () => {
+      document.removeEventListener('selectionchange', onSelChange);
+      if (timer) clearTimeout(timer);
+    };
+  }, [setReaderSelection, clearReaderSelection]);
 
   const scrollToPage = useCallback((p: number): void => {
     const wrap = pageRefs.current[p - 1];
@@ -157,6 +244,7 @@ export function PdfReader({ tab }: PdfReaderProps): JSX.Element {
 
   return (
     <div className="flex h-full w-full flex-col">
+      <PdfTextLayerStyle />
       <div className="flex h-10 shrink-0 items-center gap-1 border-b border-border bg-background px-2">
         <Button
           variant="ghost"
@@ -200,9 +288,10 @@ export function PdfReader({ tab }: PdfReaderProps): JSX.Element {
               ref={(el) => {
                 pageRefs.current[i] = el;
               }}
-              className="bg-white shadow-md"
+              className="relative bg-white shadow-md"
             >
               <canvas />
+              <div data-pdf-text-layer className="pdfTextLayer" />
             </div>
           ))}
           {numPages === 0 && (
@@ -211,6 +300,41 @@ export function PdfReader({ tab }: PdfReaderProps): JSX.Element {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Inline pdfjs text-layer styles. Keeps glyphs invisible but selectable,
+ * stacked exactly over the canvas. Same shape as the upstream
+ * text_layer_builder.css but pruned to what we actually use.
+ */
+function PdfTextLayerStyle(): JSX.Element {
+  return (
+    <style>{`
+      .pdfTextLayer {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        opacity: 1;
+        line-height: 1;
+        text-align: initial;
+        text-size-adjust: none;
+        forced-color-adjust: none;
+        transform-origin: 0 0;
+        z-index: 2;
+        --scale-factor: 1;
+      }
+      .pdfTextLayer :is(span, br) {
+        color: transparent;
+        position: absolute;
+        white-space: pre;
+        cursor: text;
+        transform-origin: 0% 0%;
+      }
+      .pdfTextLayer ::selection {
+        background: rgba(0, 100, 255, 0.3);
+      }
+    `}</style>
   );
 }
 

@@ -41,6 +41,15 @@ export const zh: Partial<Record<DictKey, string>> = {
   'titlebar.ai.interpret': '使用提示词解读…',
   'titlebar.ai.interpret.hint': '自定义提示词，确认回复后插入',
 
+  // 阅读器选区浮动工具条。
+  'reader.selection.summarize': '总结到笔记',
+  'reader.selection.translate': '翻译到笔记',
+  'reader.selection.interpret': '解读…',
+  'reader.selection.custom': '自定义…',
+  'reader.selection.prompt.summarize': '用 3 条要点总结这段，并在末尾用一行话点出主旨。',
+  'reader.selection.prompt.translate': '把这段翻译为自然、地道的中文。只返回译文。',
+  'reader.selection.prompt.interpret': '解读一下这段：背景、关键观点、对我的启发各一段。',
+
   // Workspace switcher.
   'workspace.menu.title': '工作区',
   'workspace.menu.active': '当前',

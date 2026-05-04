@@ -30,6 +30,7 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve('src/preload/index.ts'),
+          'web-tab': resolve('src/preload/web-tab.ts'),
         },
       },
     },

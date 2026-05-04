@@ -58,6 +58,12 @@ function EditorToolbar(): JSX.Element {
   const [status, setStatus] = useState<ToolbarStatus | null>(null);
   const [interpretOpen, setInterpretOpen] = useState(false);
   const [interpretSelection, setInterpretSelection] = useState('');
+  const [interpretMode, setInterpretMode] = useState<'editor-selection' | 'reader-excerpt'>(
+    'editor-selection',
+  );
+  const [interpretDefaultPrompt, setInterpretDefaultPrompt] = useState<string | undefined>(
+    undefined,
+  );
   const [publishOpen, setPublishOpen] = useState(false);
   const [blogOpen, setBlogOpen] = useState(false);
 
@@ -255,6 +261,17 @@ function EditorToolbar(): JSX.Element {
     setStatus(null);
     if (!requireBridge()) return;
     setInterpretSelection(bridge?.getSelectionText() ?? '');
+    setInterpretMode('editor-selection');
+    setInterpretDefaultPrompt(undefined);
+    setInterpretOpen(true);
+  };
+
+  const onOpenInterpretFromReader = (text: string, defaultPrompt?: string): void => {
+    setStatus(null);
+    if (!requireBridge()) return;
+    setInterpretSelection(text);
+    setInterpretMode('reader-excerpt');
+    setInterpretDefaultPrompt(defaultPrompt && defaultPrompt.trim() ? defaultPrompt : undefined);
     setInterpretOpen(true);
   };
 
@@ -305,6 +322,9 @@ function EditorToolbar(): JSX.Element {
         return;
       case 'interpret':
         onOpenInterpret();
+        return;
+      case 'interpret-reader-selection':
+        onOpenInterpretFromReader(cmd.text, cmd.defaultPrompt);
         return;
       case 'blog':
         setBlogOpen(true);
@@ -411,6 +431,8 @@ function EditorToolbar(): JSX.Element {
           open={interpretOpen}
           selectionText={interpretSelection}
           documentText={content}
+          mode={interpretMode}
+          defaultPrompt={interpretDefaultPrompt}
           onCancel={() => setInterpretOpen(false)}
           onInsert={onInterpretInsert}
         />
