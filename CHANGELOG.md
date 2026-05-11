@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _Nothing yet._
 
+## [0.1.6] — 2026-05-11
+
+### Added
+
+- **reader**: floating selection toolbar across all readers (PDF / EPUB / Code / Web). Select a passage in the reader pane and a small toolbar appears above the selection with one-click _Summarize → notes_, _Translate → notes_, _Interpret…_, and _Custom…_ actions — each one feeds the selected text into the existing AIInterpretDialog so the result lands directly in the note you're writing. (8ffadaa)
+- **reader/pdf**: PDFs now have a real text layer overlaid on the canvas, so passages are selectable (and feed the new toolbar). Re-renders cleanly on zoom; the text layer is torn down on unmount so the toolbar never lingers across reader switches. (8ffadaa)
+- **shortcut**: `⌘⇧A` / `Ctrl+Shift+A` opens the AI dialog with the current reader selection pre-filled and an empty prompt, for free-form chat against the passage without going through the toolbar. (8ffadaa)
+- **i18n**: zh/en strings for the new selection toolbar and its default prompts. (8ffadaa)
+
+### Changed
+
+- **ai/interpret-dialog**: reworked to also accept reader-side selections as input, not just editor selections — the dialog is now the single AI surface for both panes. (8ffadaa)
+
 ## [0.1.5] — 2026-04-28
 
 ### Fixed
