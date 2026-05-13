@@ -24,7 +24,7 @@
     "pnpm": ">=9"
   },
   "scripts": {
-    "dev": "electron-vite dev",
+    "dev": "NODE_OPTIONS=--disable-warning=ExperimentalWarning electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "start": "electron-vite preview",

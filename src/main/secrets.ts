@@ -57,7 +57,14 @@ export function readSecret(key: string): string {
     const buf = Buffer.from(stored.data, 'base64');
     return safeStorage.decryptString(buf);
   } catch (err) {
-    console.error(`[secrets] decrypt failed for ${key}:`, err);
+    // Ciphertext can't be decrypted with the current keychain identity —
+    // typically happens in dev when the app's signing/path changes between
+    // builds. The value is unrecoverable, so drop it instead of failing
+    // loudly on every settings read; the user will re-enter it once.
+    console.warn(
+      `[secrets] discarding unreadable ciphertext for ${key} (${(err as Error).message})`,
+    );
+    kvSet(`${PREFIX}${key}`, null);
     return '';
   }
 }
