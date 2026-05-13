@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _Nothing yet._
 
+## [0.1.8] — 2026-05-13
+
+### Fixed
+
+- **main**: don't re-register IPC handlers on macOS activate (832334f)
+
 ## [0.1.7] — 2026-05-13
 
 ### Fixed
