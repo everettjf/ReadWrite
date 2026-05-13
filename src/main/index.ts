@@ -1,4 +1,5 @@
-import { app, BrowserWindow, shell, Menu } from 'electron';
+import type { BrowserWindow } from 'electron';
+import { app, shell, Menu } from 'electron';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import { join } from 'node:path';
 import { createMainWindow } from './window';
@@ -23,13 +24,14 @@ let mainWindow: BrowserWindow | null = null;
 let tabManager: TabManager | null = null;
 let watcherHub: FileWatcherHub | null = null;
 
-function bootstrap(): void {
+// One-time process-wide setup: IPC handlers, DB, menu, dock icon. Must
+// only run once per app lifetime — re-running it would re-register IPC
+// handlers and crash with "Attempted to register a second handler".
+function setupOnce(): void {
   electronApp.setAppUserModelId('app.readwrite.desktop');
 
   Menu.setApplicationMenu(buildApplicationMenu(APP_NAME));
 
-  // In dev macOS the dock icon is Electron's. Point it at our packaged
-  // PNG so the dock matches the production .app bundle's icon.icns.
   if (process.platform === 'darwin' && app.dock) {
     try {
       app.dock.setIcon(join(__dirname, '../../build/icon.png'));
@@ -44,6 +46,25 @@ function bootstrap(): void {
 
   initDatabase();
 
+  // IPC handlers read the current window/managers through these getters,
+  // so re-opening the window after close still routes correctly without
+  // re-registering anything.
+  registerAllIpcHandlers({
+    getMainWindow: () => mainWindow,
+    getTabManager: () => tabManager!,
+    getWatcherHub: () => watcherHub!,
+  });
+}
+
+// Open (or re-open) the main window. Safe to call again after the window
+// was closed — e.g. macOS dock-icon click when no windows are open.
+function openMainWindow(): void {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.show();
+    mainWindow.focus();
+    return;
+  }
+
   mainWindow = createMainWindow({
     preloadPath: join(__dirname, '../preload/index.mjs'),
     devUrl: process.env['ELECTRON_RENDERER_URL'],
@@ -54,12 +75,6 @@ function bootstrap(): void {
   tabManager = new TabManager(mainWindow);
   watcherHub = new FileWatcherHub(mainWindow);
 
-  registerAllIpcHandlers({
-    getMainWindow: () => mainWindow,
-    getTabManager: () => tabManager!,
-    getWatcherHub: () => watcherHub!,
-  });
-
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: 'deny' };
@@ -68,18 +83,19 @@ function bootstrap(): void {
   mainWindow.on('closed', () => {
     tabManager?.destroyAll();
     watcherHub?.destroyAll();
+    tabManager = null;
+    watcherHub = null;
     mainWindow = null;
   });
 }
 
 app.whenReady().then(() => {
-  bootstrap();
+  setupOnce();
+  openMainWindow();
   initAutoUpdater();
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      bootstrap();
-    }
+    openMainWindow();
   });
 });
 
