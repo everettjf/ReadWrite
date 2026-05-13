@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _Nothing yet._
 
+## [0.1.7] — 2026-05-13
+
+### Fixed
+
+- **secrets**: discard unreadable safeStorage ciphertext on read (2aaeff4)
+
 ## [0.1.6] — 2026-05-11
 
 ### Added
