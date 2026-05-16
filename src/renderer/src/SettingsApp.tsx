@@ -2,7 +2,16 @@ import { useEffect, useState } from 'react';
 import { useSettingsStore } from './stores/settings';
 import { useT } from './i18n';
 import { cn } from './lib/utils';
-import { Type, Image as ImageIcon, Sparkles, Send, Info, Palette, Folder } from 'lucide-react';
+import {
+  Type,
+  Image as ImageIcon,
+  Sparkles,
+  Send,
+  Info,
+  Palette,
+  Folder,
+  Link2,
+} from 'lucide-react';
 import type { DictKey } from './i18n/locales/en';
 import { GeneralPanel } from './components/settings/GeneralPanel';
 import { EditorPanel } from './components/settings/EditorPanel';
@@ -10,9 +19,18 @@ import { WorkspacesPanel } from './components/settings/WorkspacesPanel';
 import { ImagesPanel } from './components/settings/ImagesPanel';
 import { AIPanel } from './components/settings/AIPanel';
 import { WeChatPanel } from './components/settings/WeChatPanel';
+import { QuickLinksPanel } from './components/settings/QuickLinksPanel';
 import { AboutPanel } from './components/settings/AboutPanel';
 
-type SectionId = 'general' | 'workspaces' | 'editor' | 'images' | 'ai' | 'wechat' | 'about';
+type SectionId =
+  | 'general'
+  | 'workspaces'
+  | 'editor'
+  | 'images'
+  | 'ai'
+  | 'wechat'
+  | 'quickLinks'
+  | 'about';
 
 const SECTIONS: Array<{
   id: SectionId;
@@ -25,6 +43,7 @@ const SECTIONS: Array<{
   { id: 'images', labelKey: 'settings.section.images', Icon: ImageIcon },
   { id: 'ai', labelKey: 'settings.section.ai', Icon: Sparkles },
   { id: 'wechat', labelKey: 'settings.section.wechat', Icon: Send },
+  { id: 'quickLinks', labelKey: 'settings.section.quickLinks', Icon: Link2 },
   { id: 'about', labelKey: 'settings.section.about', Icon: Info },
 ];
 
@@ -85,6 +104,7 @@ export function SettingsApp(): JSX.Element {
           {active === 'images' && <ImagesPanel />}
           {active === 'ai' && <AIPanel />}
           {active === 'wechat' && <WeChatPanel />}
+          {active === 'quickLinks' && <QuickLinksPanel />}
           {active === 'about' && <AboutPanel />}
         </div>
       </main>

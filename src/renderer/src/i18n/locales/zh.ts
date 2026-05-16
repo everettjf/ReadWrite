@@ -98,6 +98,7 @@ export const zh: Partial<Record<DictKey, string>> = {
   'settings.section.images': '图片',
   'settings.section.ai': 'AI',
   'settings.section.wechat': '微信公众号',
+  'settings.section.quickLinks': '常用站点',
   'settings.section.about': '关于',
 
   // Settings — General.

@@ -29,6 +29,7 @@ const DEFAULTS: AppSettings = {
   wechatExportTheme: 'default',
   autosaveDebounceMs: 1500,
   sidebarVisible: true,
+  quickLinks: [],
 } as AppSettings;
 
 export const useSettingsStore = create<SettingsState>((set) => ({

@@ -136,6 +136,19 @@ export interface AppSettings {
   // Layout
   /** Whether the workspace docs sidebar is visible. */
   sidebarVisible: boolean;
+
+  /** User-curated shortcuts shown on the reader empty state. */
+  quickLinks: QuickLink[];
+}
+
+/**
+ * Frequently-used URLs (news, dashboards, etc.) the user wants one click
+ * away from the reader empty state.
+ */
+export interface QuickLink {
+  id: string;
+  name: string;
+  url: string;
 }
 
 /**

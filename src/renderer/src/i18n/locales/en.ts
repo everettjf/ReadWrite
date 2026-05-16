@@ -104,6 +104,7 @@ export const en = {
   'settings.section.images': 'Images',
   'settings.section.ai': 'AI',
   'settings.section.wechat': 'WeChat',
+  'settings.section.quickLinks': 'Quick Links',
   'settings.section.about': 'About',
 
   // Settings — General.

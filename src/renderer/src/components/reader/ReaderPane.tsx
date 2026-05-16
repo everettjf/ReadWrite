@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useTabsStore } from '@/stores/tabs';
+import { useSettingsStore } from '@/stores/settings';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Globe, FileText, Book, Code2 } from 'lucide-react';
+import { Globe, FileText, Book, Code2, Link2 } from 'lucide-react';
 import { TabBar } from './TabBar';
 import { WebReader } from './WebReader';
 import { PdfReader } from './PdfReader';
@@ -68,6 +69,7 @@ export function ReaderPane({ onStartSnip }: ReaderPaneProps): JSX.Element {
 function EmptyState(): JSX.Element {
   const [input, setInput] = useState('');
   const canOpenUrl = !!toGithubWebUrl(input);
+  const quickLinks = useSettingsStore((s) => s.quickLinks);
 
   const handleWeb = async (): Promise<void> => {
     if (await openWebOrGithubTab(input)) setInput('');
@@ -108,6 +110,29 @@ function EmptyState(): JSX.Element {
             <Code2 className="mr-2 h-4 w-4" /> Code
           </Button>
         </div>
+
+        {quickLinks.length > 0 && (
+          <div className="space-y-2 pt-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Quick links
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {quickLinks.map((link) => (
+                <Button
+                  key={link.id}
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={() => openWebOrGithubTab(link.url)}
+                  title={link.url}
+                >
+                  <Link2 className="mr-1.5 h-3.5 w-3.5" />
+                  {link.name}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="space-y-2 pt-4">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">

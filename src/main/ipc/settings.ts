@@ -2,10 +2,18 @@ import { ipcMain, BrowserWindow, app } from 'electron';
 import { IPC } from '@shared/ipc-channels';
 import type { IpcContext } from './index';
 import { kvGet, kvSet } from '../db';
-import type { AppSettings } from '@shared/types';
+import type { AppSettings, QuickLink } from '@shared/types';
 import { openSettingsWindow } from '../window';
 import { join } from 'node:path';
 import { readSecret, writeSecret, migrateSecretsFromLegacySettings, SECRET_KEYS } from '../secrets';
+
+export const DEFAULT_QUICK_LINKS: QuickLink[] = [
+  { id: 'github-trending', name: 'GitHub Trending', url: 'https://github.com/trending' },
+  { id: 'hacker-news', name: 'Hacker News', url: 'https://news.ycombinator.com' },
+  { id: 'techcrunch', name: 'TechCrunch', url: 'https://techcrunch.com' },
+  { id: 'product-hunt', name: 'Product Hunt', url: 'https://www.producthunt.com' },
+  { id: 'hugging-face', name: 'Hugging Face', url: 'https://huggingface.co' },
+];
 
 const DEFAULT_SETTINGS: AppSettings = {
   theme: 'system',
@@ -36,6 +44,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   autosaveDebounceMs: 1500,
 
   sidebarVisible: true,
+
+  quickLinks: DEFAULT_QUICK_LINKS,
 };
 
 export function getCurrentSettings(): AppSettings {

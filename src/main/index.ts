@@ -1,6 +1,6 @@
 import type { BrowserWindow } from 'electron';
 import { app, shell, Menu } from 'electron';
-import { electronApp, optimizer, is } from '@electron-toolkit/utils';
+import { electronApp, optimizer } from '@electron-toolkit/utils';
 import { join } from 'node:path';
 import { createMainWindow } from './window';
 import { registerAllIpcHandlers } from './ipc';
@@ -69,7 +69,6 @@ function openMainWindow(): void {
     preloadPath: join(__dirname, '../preload/index.mjs'),
     devUrl: process.env['ELECTRON_RENDERER_URL'],
     indexHtml: join(__dirname, '../renderer/index.html'),
-    isDev: is.dev,
   });
 
   tabManager = new TabManager(mainWindow);

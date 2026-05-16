@@ -6,7 +6,6 @@ interface MainWindowOptions {
   preloadPath: string;
   devUrl?: string;
   indexHtml: string;
-  isDev: boolean;
 }
 
 /**
@@ -54,9 +53,6 @@ export function createMainWindow(opts: MainWindowOptions): BrowserWindow {
 
   if (opts.devUrl) {
     win.loadURL(opts.devUrl);
-    if (opts.isDev) {
-      win.webContents.openDevTools({ mode: 'detach' });
-    }
   } else {
     win.loadFile(opts.indexHtml);
   }
